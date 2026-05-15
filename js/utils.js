@@ -77,6 +77,7 @@ const Utils = {
             defaultTerms: 'Payment due within 30 days. Thank you for your business.',
             message: 'Thanks for working with us. Please review the invoice and reach out with any questions.',
             tableStyle: 'clean',
+            fontStack: "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
         },
         {
             id: 'studio-pro',
@@ -91,6 +92,7 @@ const Utils = {
             defaultTerms: 'Payment due within 14 days. A 50% deposit may be required before production begins.',
             message: 'Here is the latest project invoice. We appreciate the collaboration.',
             tableStyle: 'editorial',
+            fontStack: "'Avenir Next', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         },
         {
             id: 'field-contractor',
@@ -105,6 +107,7 @@ const Utils = {
             defaultTerms: 'Payment due within 15 days. Materials, labor, and reimbursable costs are listed below.',
             message: 'Please review the attached job invoice and payment details.',
             tableStyle: 'work-order',
+            fontStack: "'Helvetica Neue', Arial, sans-serif",
         },
         {
             id: 'consultant-minimal',
@@ -119,6 +122,7 @@ const Utils = {
             defaultTerms: 'Payment due within 30 days. Retainers and recurring services are billed as agreed.',
             message: 'Attached is the invoice for the current engagement period.',
             tableStyle: 'minimal',
+            fontStack: "'SF Pro Text', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         },
         {
             id: 'legal-classic',
@@ -133,6 +137,7 @@ const Utils = {
             defaultTerms: 'Payment due within 30 days. Please reference the invoice number with payment.',
             message: 'Please find the invoice details below for your records.',
             tableStyle: 'formal',
+            fontStack: "Georgia, 'Times New Roman', serif",
         },
         {
             id: 'creative-bold',
@@ -147,6 +152,7 @@ const Utils = {
             defaultTerms: 'Payment due within 10 days. Custom work begins after deposit confirmation when applicable.',
             message: 'Thank you for choosing us. Your invoice and next steps are ready.',
             tableStyle: 'bold',
+            fontStack: "'Arial Black', 'Avenir Next', 'Inter', sans-serif",
         },
     ],
 

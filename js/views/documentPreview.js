@@ -50,16 +50,11 @@ const DocumentPreviewView = {
                 </div>
 
                 <div class="ios-section preview-preset-section">
-                    <div class="ios-section-header">Preview Style</div>
-                    <div class="ios-section-content preset-strip-wrap">
-                        <div class="preset-strip">
-                            ${Utils.brandPresets.map(item => `
-                                <button class="mini-preset ${item.id === this._doc.brandPresetId ? 'active' : ''}" data-preview-preset="${item.id}">
-                                    <span class="preset-color" style="background:${item.color}"></span>
-                                    <strong>${item.shortName}</strong>
-                                    <small>${item.templateId}</small>
-                                </button>
-                            `).join('')}
+                    <div class="ios-section-header">Theme</div>
+                    <div class="ios-section-content theme-tab">
+                        ${this._renderThemeLargePreview(preset)}
+                        <div class="theme-preview-grid">
+                            ${Utils.brandPresets.map(item => this._renderThemeOption(item)).join('')}
                         </div>
                     </div>
                 </div>
@@ -93,7 +88,7 @@ const DocumentPreviewView = {
                 </div>
 
                 <!-- Document Preview Card -->
-                <div class="preview-card template-${this._doc.templateId || 'modern'}" id="preview-card" style="--brand-color: ${this._doc.brandColor || this._company.brandColor || '#0056b3'}">
+                <div class="preview-card template-${this._doc.templateId || 'modern'}" id="preview-card" style="--brand-color: ${this._doc.brandColor || this._company.brandColor || '#0056b3'}; --invoice-font: ${preset.fontStack};">
                     ${this._getTemplateHTML()}
                 </div>
 
@@ -115,20 +110,67 @@ const DocumentPreviewView = {
         return this._renderModern();
     },
 
+    _renderThemeLargePreview(preset) {
+        return `
+            <div class="theme-large-preview" style="--brand-color:${preset.color}; --invoice-font:${preset.fontStack};">
+                <div class="theme-large-head">
+                    <div>
+                        <span>Current Theme</span>
+                        <strong>${Utils.escapeHtml(preset.name)}</strong>
+                        <small>${Utils.escapeHtml(preset.tone)}</small>
+                    </div>
+                    <em>${Utils.escapeHtml(preset.templateId)}</em>
+                </div>
+                <div class="theme-paper-preview theme-paper-${preset.templateId}">
+                    <div class="theme-paper-top">
+                        <strong>${this._doc.documentType === 'estimate' ? 'ESTIMATE' : 'INVOICE'}</strong>
+                        <span>${Utils.escapeHtml(this._company.name || 'Your Company')}</span>
+                    </div>
+                    <div class="theme-paper-meta">
+                        <span>Bill To<br><b>${Utils.escapeHtml(this._doc.clientName || 'Client Name')}</b></span>
+                        <span>${Utils.escapeHtml(this._doc.documentID || 'INV-0001')}<br>${Utils.formatDate(this._doc.creationDate)}</span>
+                    </div>
+                    <div class="theme-paper-table">
+                        <i></i><i></i><i></i>
+                    </div>
+                    <div class="theme-paper-total">
+                        <span>Total</span>
+                        <strong>${Utils.formatCurrency(Utils.docTotal(this._doc.lineItems, this._doc.isTaxEnabled, this._doc))}</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    _renderThemeOption(preset) {
+        const active = preset.id === this._doc.brandPresetId;
+        return `
+            <button class="theme-option ${active ? 'active' : ''}" data-preview-preset="${preset.id}" style="--brand-color:${preset.color}; --invoice-font:${preset.fontStack};">
+                <div class="theme-option-paper theme-paper-${preset.templateId}">
+                    <div class="theme-option-title">INVOICE</div>
+                    <div class="theme-option-lines"><span></span><span></span><span></span></div>
+                    <div class="theme-option-total"></div>
+                </div>
+                <strong>${Utils.escapeHtml(preset.shortName)}</strong>
+                <small>${Utils.escapeHtml(preset.name)}</small>
+            </button>
+        `;
+    },
+
     // ── Classic Template (Image 1) ──
     _renderClassic() {
         const typeLabel = this._doc.documentType === 'invoice' ? 'INVOICE' : 'ESTIMATE';
         return `
             <!-- Top Section: Logo Left, Title Right -->
-            <div class="template-flex" style="align-items: flex-start; justify-content: space-between; margin-bottom: 30px;">
+            <div class="template-title-row template-flex" style="align-items: flex-start; justify-content: space-between; margin-bottom: 30px;">
                 <div class="preview-logo-wrapper">
                     ${this._company.logoData
                         ? `<img src="${this._company.logoData}" alt="Logo" style="max-height: 48px; max-width: 150px; object-fit: contain;">`
-                        : (this._company.name ? `<h2 style="margin:0; font-size: 28px; letter-spacing: -1px; color: #111;">${Utils.escapeHtml(this._company.name)}</h2>` : '')
+                        : (this._company.name ? `<h2 class="invoice-company-title">${Utils.escapeHtml(this._company.name)}</h2>` : '')
                     }
                 </div>
                 <div style="text-align: right;">
-                    <h1 style="margin: 0 0 16px 0; font-size: 38px; font-weight: 500; letter-spacing: -0.5px; color: #1c1c1e;">${typeLabel}</h1>
+                    <h1 class="invoice-title invoice-title-classic">${typeLabel}</h1>
                     <div class="preview-company-detail">${Utils.escapeHtml(this._company.name || '')}</div>
                 </div>
             </div>
@@ -205,9 +247,9 @@ const DocumentPreviewView = {
             </div>
 
             <!-- Overlapping Centered Title -->
-            <div style="text-align: center; margin-top: -65px; margin-bottom: 40px; position: relative;">
-                <h1 style="margin: 0; font-size: 52px; font-weight: 700; letter-spacing: -1.5px; color: #1c1c1e; text-transform: uppercase; line-height: 1;">${typeLabel}</h1>
-                <div style="font-size: 14px; font-weight: 500; color: var(--color-label-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">
+            <div class="bold-title-lockup">
+                <h1 class="invoice-title invoice-title-bold">${typeLabel}</h1>
+                <div style="font-size: 14px; font-weight: 500; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">
                     ${Utils.formatDate(this._doc.creationDate)}
                 </div>
             </div>
@@ -264,14 +306,14 @@ const DocumentPreviewView = {
         const typeLabel = this._doc.documentType === 'invoice' ? 'INVOICE' : 'ESTIMATE';
         return `
             <!-- Top Section: Type left, Logo right -->
-            <div class="template-flex" style="align-items: center; justify-content: space-between; margin-bottom: 40px;">
+            <div class="template-title-row template-flex" style="align-items: center; justify-content: space-between; margin-bottom: 40px;">
                 <div>
-                    <h1 style="margin: 0; font-size: 56px; font-weight: 700; letter-spacing: -2px; color: #1c1c1e; text-transform: uppercase; line-height: 1;">${typeLabel}</h1>
+                    <h1 class="invoice-title invoice-title-modern">${typeLabel}</h1>
                 </div>
                 <div class="preview-logo-wrapper" style="text-align: right;">
                     ${this._company.logoData
                         ? `<img src="${this._company.logoData}" alt="Logo" style="max-height: 48px; max-width: 150px; object-fit: contain;">`
-                        : (this._company.name ? `<h2 style="margin:0; font-size: 32px; letter-spacing: -1px; color: #111;">${Utils.escapeHtml(this._company.name)}</h2>` : '')
+                        : (this._company.name ? `<h2 class="invoice-company-title invoice-company-title-large">${Utils.escapeHtml(this._company.name)}</h2>` : '')
                     }
                 </div>
             </div>
@@ -341,7 +383,7 @@ const DocumentPreviewView = {
             <div style="display:flex; justify-content:space-between; gap:18px; margin-bottom:28px; border-bottom:4px solid var(--brand-color); padding-bottom:18px;">
                 <div>
                     <div style="font-size:12px; font-weight:800; color:var(--brand-color); text-transform:uppercase;">Work Order Billing</div>
-                    <h1 style="margin:4px 0 0; font-size:42px; color:#1c1c1e;">${typeLabel}</h1>
+                    <h1 class="invoice-title invoice-title-contractor">${typeLabel}</h1>
                 </div>
                 <div style="text-align:right; font-size:13px; color:#555;">
                     <strong>${Utils.escapeHtml(this._company.name || 'Your Company')}</strong><br>
@@ -363,7 +405,7 @@ const DocumentPreviewView = {
         const typeLabel = this._doc.documentType === 'invoice' ? 'Invoice' : 'Estimate';
         return `
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:34px;">
-                <h1 style="font-size:34px; font-weight:600; color:#111; margin:0;">${typeLabel}</h1>
+                <h1 class="invoice-title invoice-title-minimal">${typeLabel}</h1>
                 <div style="text-align:right; font-size:13px; color:#555;">${Utils.escapeHtml(this._doc.documentID)}<br>${Utils.formatDate(this._doc.creationDate)}</div>
             </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px;">
@@ -655,8 +697,43 @@ const DocumentPreviewView = {
     _getPrintStyles() {
         return `
             .preview-card {
+                --color-label: #1c1c1e;
+                --color-label-secondary: #5f6368;
+                --color-label-tertiary: #8a8f98;
                 max-width: 720px;
                 margin: 0 auto;
+                background: #ffffff;
+                color: #1c1c1e;
+                font-family: var(--invoice-font, 'Inter', -apple-system, sans-serif);
+            }
+            .invoice-title {
+                margin: 0;
+                color: #121317;
+                line-height: 0.95;
+                text-transform: uppercase;
+                overflow-wrap: anywhere;
+            }
+            .invoice-title-modern { font-size: 52px; font-weight: 800; }
+            .invoice-title-classic { margin-bottom: 14px; font-size: 38px; font-weight: 500; letter-spacing: 1.5px; }
+            .invoice-title-bold {
+                display: inline-block;
+                padding: 8px 16px;
+                background: #ffffff;
+                color: #101114;
+                border: 2px solid #101114;
+                font-size: 48px;
+                font-weight: 900;
+            }
+            .invoice-title-contractor { margin-top: 4px; font-size: 42px; font-weight: 900; }
+            .invoice-title-minimal { font-size: 34px; font-weight: 650; text-transform: none; }
+            .invoice-company-title { margin: 0; color: #111827; font-size: 28px; font-weight: 800; }
+            .invoice-company-title-large { font-size: 32px; }
+            .bold-title-lockup {
+                position: relative;
+                z-index: 2;
+                text-align: center;
+                margin-top: -56px;
+                margin-bottom: 34px;
             }
             .preview-header {
                 display: flex;

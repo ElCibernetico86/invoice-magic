@@ -1471,10 +1471,101 @@ textarea.ios-input {
 }
 
 .preview-card {
-    background: var(--color-bg-grouped-secondary);
+    --color-label: #1c1c1e;
+    --color-label-secondary: #5f6368;
+    --color-label-tertiary: #8a8f98;
+    background: #ffffff;
+    color: #1c1c1e;
     border-radius: var(--border-radius);
     padding: 24px 20px;
     margin-bottom: 40px;
+    font-family: var(--invoice-font, var(--font-family));
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+}
+
+.preview-card * {
+    color-scheme: light;
+}
+
+.invoice-title {
+    margin: 0;
+    color: #121317;
+    line-height: 0.95;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+}
+
+.invoice-title-modern {
+    font-size: 52px;
+    font-weight: 800;
+}
+
+.invoice-title-classic {
+    margin-bottom: 14px;
+    font-size: 38px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+}
+
+.invoice-title-bold {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #ffffff;
+    color: #101114;
+    border: 2px solid #101114;
+    font-size: 48px;
+    font-weight: 900;
+}
+
+.invoice-title-contractor {
+    margin-top: 4px;
+    font-size: 42px;
+    font-weight: 900;
+}
+
+.invoice-title-minimal {
+    font-size: 34px;
+    font-weight: 650;
+    text-transform: none;
+}
+
+.invoice-company-title {
+    margin: 0;
+    color: #111827;
+    font-size: 28px;
+    font-weight: 800;
+}
+
+.invoice-company-title-large {
+    font-size: 32px;
+}
+
+.bold-title-lockup {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    margin-top: -56px;
+    margin-bottom: 34px;
+}
+
+.template-classic {
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+.template-bold {
+    font-family: 'Arial Black', 'Avenir Next', 'Inter', sans-serif;
+}
+
+.template-studio {
+    font-family: 'Avenir Next', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.template-contractor {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.template-minimal {
+    font-family: 'SF Pro Text', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .preview-header {
@@ -2561,6 +2652,269 @@ textarea.ios-input {
     margin-bottom: 14px;
 }
 
+.theme-tab {
+    padding: 12px;
+}
+
+.theme-large-preview {
+    border-radius: 8px;
+    border: 0.5px solid var(--color-separator);
+    background: var(--color-fill-tertiary);
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.theme-large-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.theme-large-head span,
+.theme-large-head small,
+.theme-large-head em {
+    display: block;
+    color: var(--color-label-secondary);
+    font: var(--font-caption1);
+    font-style: normal;
+}
+
+.theme-large-head strong {
+    display: block;
+    margin-top: 2px;
+    font: var(--font-headline);
+}
+
+.theme-large-head small {
+    margin-top: 2px;
+    line-height: 1.35;
+}
+
+.theme-large-head em {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--color-fill-secondary);
+    white-space: nowrap;
+}
+
+.theme-paper-preview,
+.theme-option-paper {
+    background: #ffffff;
+    color: #111827;
+    font-family: var(--invoice-font, var(--font-family));
+    border-radius: 6px;
+    border: 1px solid rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.theme-paper-preview {
+    padding: 14px;
+    min-height: 162px;
+}
+
+.theme-paper-top,
+.theme-paper-meta,
+.theme-paper-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.theme-paper-top {
+    align-items: flex-start;
+    margin-bottom: 16px;
+    border-left: 6px solid transparent;
+    padding-left: 0;
+}
+
+.theme-paper-top strong {
+    color: #111827;
+    font-size: 26px;
+    line-height: 1;
+}
+
+.theme-paper-top span,
+.theme-paper-meta span {
+    color: #4b5563;
+    font-size: 11px;
+    text-align: right;
+}
+
+.theme-paper-meta {
+    margin-bottom: 12px;
+}
+
+.theme-paper-meta span:first-child {
+    text-align: left;
+}
+
+.theme-paper-meta b {
+    color: #111827;
+    font-size: 12px;
+}
+
+.theme-paper-table {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.theme-paper-table i {
+    display: block;
+    height: 9px;
+    border-radius: 999px;
+    background: #e5e7eb;
+}
+
+.theme-paper-table i:first-child {
+    background: var(--brand-color);
+}
+
+.theme-paper-table i:nth-child(2) {
+    width: 88%;
+}
+
+.theme-paper-table i:nth-child(3) {
+    width: 72%;
+}
+
+.theme-paper-total {
+    align-items: center;
+    border-top: 2px solid #111827;
+    padding-top: 8px;
+    font-size: 13px;
+}
+
+.theme-paper-total strong {
+    color: #111827;
+    font-size: 16px;
+}
+
+.theme-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.theme-option {
+    min-width: 0;
+    border: 1px solid var(--color-separator);
+    border-radius: 8px;
+    background: var(--color-bg-elevated);
+    color: var(--color-label);
+    padding: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.theme-option.active {
+    border-color: var(--color-blue);
+    background: rgba(0, 122, 255, 0.08);
+}
+
+.theme-option:active {
+    transform: scale(0.97);
+}
+
+.theme-option-paper {
+    height: 90px;
+    padding: 8px;
+    margin-bottom: 8px;
+}
+
+.theme-option-title {
+    color: #111827;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 12px;
+}
+
+.theme-option-lines {
+    display: grid;
+    gap: 4px;
+}
+
+.theme-option-lines span {
+    display: block;
+    height: 5px;
+    border-radius: 999px;
+    background: #e5e7eb;
+}
+
+.theme-option-lines span:first-child {
+    background: var(--brand-color);
+}
+
+.theme-option-lines span:nth-child(2) {
+    width: 82%;
+}
+
+.theme-option-lines span:nth-child(3) {
+    width: 62%;
+}
+
+.theme-option-total {
+    width: 46%;
+    height: 7px;
+    margin: 10px 0 0 auto;
+    border-radius: 999px;
+    background: #111827;
+}
+
+.theme-option strong,
+.theme-option small {
+    display: block;
+}
+
+.theme-option strong {
+    font: var(--font-footnote);
+    font-weight: 800;
+}
+
+.theme-option small {
+    margin-top: 2px;
+    font: var(--font-caption2);
+    color: var(--color-label-secondary);
+}
+
+.theme-paper-studio .theme-paper-top,
+.theme-paper-studio .theme-option-title {
+    color: var(--brand-color);
+}
+
+.theme-paper-studio {
+    border-left: 6px solid var(--brand-color);
+}
+
+.theme-paper-contractor .theme-paper-top,
+.theme-paper-contractor .theme-option-title {
+    border-bottom: 4px solid var(--brand-color);
+    padding-bottom: 6px;
+}
+
+.theme-paper-classic,
+.theme-paper-classic .theme-option-title {
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+.theme-paper-bold .theme-paper-top,
+.theme-paper-bold .theme-option-title {
+    background: var(--brand-color);
+    color: white;
+    padding: 8px;
+    margin: -8px -8px 12px;
+}
+
+.theme-paper-minimal .theme-paper-top strong,
+.theme-paper-minimal .theme-option-title {
+    text-transform: none;
+    font-weight: 650;
+}
+
 .preview-actions {
     flex-wrap: wrap;
     margin-bottom: 10px;
@@ -2623,6 +2977,10 @@ textarea.ios-input {
     .preset-grid,
     .send-action-grid,
     .command-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .theme-preview-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
