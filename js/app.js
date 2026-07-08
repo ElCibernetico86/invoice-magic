@@ -156,7 +156,7 @@ const App = {
         doc.brandColor = company.brandColor || preset.color;
         doc.paymentTerms = company.defaultTerms && company.defaultTerms !== 'Payment due within 30 days.'
             ? company.defaultTerms
-            : preset.defaultTerms;
+            : '';
         doc.paymentLink = company.paymentUrl || '';
         if (company.defaultTaxRate) {
             doc.lineItems[0].taxRate = parseFloat(company.defaultTaxRate) || 0;

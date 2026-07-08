@@ -493,8 +493,7 @@ const DocumentPreviewView = {
                         if (item.type === 'section') {
                             return `
                         <tr>
-                            <td colspan="${this._doc.isTaxEnabled ? 4 : 3}" style="${sectionTd} font-weight: 800; color: #1c1c1e; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">${Utils.escapeHtml(item.itemDescription || 'Section')}</td>
-                            <td style="${sectionTd} text-align: right; font-size: 11.5px; font-weight: 700; color: #1c1c1e;">${Utils.formatCurrency(Utils.sectionSubtotal(items, index, this._doc.isTaxEnabled))}</td>
+                            <td colspan="${this._doc.isTaxEnabled ? 5 : 4}" style="${sectionTd} font-weight: 800; color: #1c1c1e; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">${Utils.escapeHtml(item.itemDescription || 'Section')}</td>
                         </tr>`;
                         }
                         return `

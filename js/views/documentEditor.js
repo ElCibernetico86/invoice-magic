@@ -78,7 +78,7 @@ const DocumentEditorView = {
                             `).join('')}
                         </div>
                     </div>
-                    <div class="ios-section-footer">Presets control the exported document style, due date defaults, message, and payment terms.</div>
+                    <div class="ios-section-footer">Presets control the exported document style and due date defaults.</div>
                 </div>
 
                 <!-- Client Section -->
@@ -231,17 +231,17 @@ const DocumentEditorView = {
                     <div class="ios-section-content">
                         <div class="ios-cell">
                             <textarea class="ios-input" id="editor-client-message"
-                                      placeholder="Short client message…"
+                                      placeholder="${isEstimate ? 'e.g. Thanks for the opportunity — here is your estimate. Let us know if you would like any changes.' : 'e.g. Thank you for your business. Please review the invoice below.'}"
                                       rows="2">${Utils.escapeHtml(doc.clientMessage || '')}</textarea>
                         </div>
                         <div class="ios-cell">
                             <textarea class="ios-input" id="editor-payment-terms"
-                                      placeholder="Payment terms…"
+                                      placeholder="${isEstimate ? 'e.g. Estimate valid for 30 days. A 50% deposit is required to schedule work.' : 'e.g. Payment due within 30 days.'}"
                                       rows="2">${Utils.escapeHtml(doc.paymentTerms || '')}</textarea>
                         </div>
                         <div class="ios-cell">
                             <textarea class="ios-input" id="editor-notes"
-                                      placeholder="Payment terms, notes…"
+                                      placeholder="${isEstimate ? 'e.g. Materials and labor included. Final price may change after on-site measurement.' : 'e.g. Any additional notes for the client…'}"
                                       rows="3">${Utils.escapeHtml(doc.notes || '')}</textarea>
                         </div>
                     </div>
@@ -340,9 +340,6 @@ const DocumentEditorView = {
                     <input type="text" class="section-item-name" placeholder="Section name (e.g. Master Bathroom)"
                            value="${Utils.escapeHtml(item.itemDescription || '')}"
                            data-field="itemDescription" data-index="${index}">
-                    <div class="section-item-subtotal" data-section-subtotal="${index}">
-                        ${Utils.formatCurrency(Utils.sectionSubtotal(items, index, this._currentDoc?.isTaxEnabled))}
-                    </div>
                     <button class="line-item-delete" data-delete-index="${index}" aria-label="Delete section">−</button>
                 </div>
             </div>
@@ -501,8 +498,6 @@ const DocumentEditorView = {
         container.querySelectorAll('[data-editor-preset]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const preset = Utils.getBrandPreset(btn.dataset.editorPreset);
-                self._currentDoc.paymentTerms = preset.defaultTerms;
-                self._currentDoc.clientMessage = preset.message;
                 Utils.applyPresetToDocument(self._currentDoc, preset.id);
                 self._currentDoc.brandColor = preset.color;
                 await db.saveDocument(self._currentDoc);
@@ -836,12 +831,6 @@ const DocumentEditorView = {
                 if (totalEl) {
                     totalEl.textContent = Utils.formatCurrency(Utils.lineTotal(self._currentDoc.lineItems[index], self._currentDoc.isTaxEnabled));
                 }
-
-                // Update section subtotals
-                container.querySelectorAll('[data-section-subtotal]').forEach(el => {
-                    const sIndex = parseInt(el.dataset.sectionSubtotal, 10);
-                    el.textContent = Utils.formatCurrency(Utils.sectionSubtotal(self._currentDoc.lineItems, sIndex, self._currentDoc.isTaxEnabled));
-                });
 
                 // Update footer totals
                 container.querySelector('#totals-footer').innerHTML = self._renderTotals(self._currentDoc.lineItems);

@@ -172,8 +172,6 @@ const Utils = {
         doc.brandPresetId = preset.id;
         doc.templateId = preset.templateId;
         doc.brandColor = preset.color;
-        doc.paymentTerms = doc.paymentTerms || preset.defaultTerms;
-        doc.clientMessage = doc.clientMessage || preset.message;
         if (!doc.dueDate || doc.dueDate === this.thirtyDaysFromNow()) {
             doc.dueDate = this.addDays(doc.creationDate || this.today(), preset.dueDays || 30);
         }
@@ -191,8 +189,8 @@ const Utils = {
         doc.brandPresetId = doc.brandPresetId || preset.id;
         doc.templateId = doc.templateId || preset.templateId;
         doc.brandColor = doc.brandColor || company?.brandColor || preset.color;
-        doc.clientMessage = doc.clientMessage || preset.message;
-        doc.paymentTerms = doc.paymentTerms || company?.defaultTerms || preset.defaultTerms;
+        doc.clientMessage = doc.clientMessage || '';
+        doc.paymentTerms = doc.paymentTerms || '';
         doc.depositType = doc.depositType || 'none';
         doc.depositValue = parseFloat(doc.depositValue) || 0;
         doc.paymentLink = doc.paymentLink || company?.paymentUrl || '';
@@ -483,7 +481,7 @@ const Utils = {
             creationDate: this.today(),
             dueDate: this.addDays(this.today(), preset.dueDays || 30),
             notes: '',
-            clientMessage: preset.message,
+            clientMessage: '',
             clientId: null,
             clientName: '',
             isTaxEnabled: true,
@@ -492,7 +490,7 @@ const Utils = {
             depositType: 'none',
             depositValue: 0,
             paymentLink: '',
-            paymentTerms: preset.defaultTerms,
+            paymentTerms: '',
             recurring: 'none',
             attachments: [],
             activity: [{
@@ -529,7 +527,7 @@ const Utils = {
             depositType: estimate.depositType || 'none',
             depositValue: estimate.depositValue || 0,
             paymentLink: estimate.paymentLink || '',
-            paymentTerms: estimate.paymentTerms || 'Payment due within 30 days.',
+            paymentTerms: estimate.paymentTerms || '',
             recurring: 'none',
             attachments: (estimate.attachments || []).map(item => ({ ...item })),
             activity: [{
