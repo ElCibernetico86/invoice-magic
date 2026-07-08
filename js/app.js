@@ -15,6 +15,9 @@ const App = {
     async init() {
         await db.open();
 
+        // Optional cloud backup (no-op until firebase-config.js is filled in)
+        if (typeof CloudSync !== 'undefined') CloudSync.init();
+
         // Apply saved theme
         Utils.applyTheme();
 
@@ -143,7 +146,7 @@ const App = {
     },
 
     async createDocument(documentType, templateId = null, client = null) {
-        const docNum = await db.getNextDocumentNumber(documentType);
+        const docNum = await db.getNextDocumentNumber(documentType, client);
         const company = await db.getCompanyProfile();
         const presetId = templateId || client?.defaultPresetId || company.defaultPresetId || 'apple-clean';
         const preset = Utils.getBrandPreset(presetId);

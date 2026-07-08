@@ -162,7 +162,7 @@ const DocumentPreviewView = {
         const typeLabel = this._doc.documentType === 'invoice' ? 'INVOICE' : 'ESTIMATE';
         return `
             <!-- Top Section: Logo Left, Title Right -->
-            <div class="template-title-row template-flex" style="align-items: flex-start; justify-content: space-between; margin-bottom: 30px;">
+            <div class="template-title-row template-flex" style="align-items: flex-start; justify-content: space-between; margin-bottom: 20px;">
                 <div class="preview-logo-wrapper">
                     ${this._company.logoData
                         ? `<img src="${this._company.logoData}" alt="Logo" style="max-height: 48px; max-width: 150px; object-fit: contain;">`
@@ -176,7 +176,7 @@ const DocumentPreviewView = {
             </div>
 
             <!-- Meta Section: Bill To Left, Dates Right -->
-            <div class="template-flex" style="justify-content: space-between; margin-bottom: 24px;">
+            <div class="template-flex" style="justify-content: space-between; margin-bottom: 16px;">
                 <div class="meta-section">
                     <div style="font-weight: 700; margin-bottom: 4px; color: #1c1c1e;">FOR:</div>
                     <div style="font-weight: 500; color: #1c1c1e;">${Utils.escapeHtml(this._doc.clientName || 'No Client')}</div>
@@ -199,7 +199,7 @@ const DocumentPreviewView = {
             ${this._renderTable()}
 
             <!-- Totals Footer -->
-            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
                 <div style="width: 250px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600;">
                         <span>SUBTOTAL:</span>
@@ -211,7 +211,7 @@ const DocumentPreviewView = {
                         <span>${Utils.formatCurrency(Utils.docTax(this._doc.lineItems, this._doc.isTaxEnabled))}</span>
                     </div>
                     ` : ''}
-                    <div style="border-top: 2.5px solid var(--brand-color); padding-top: 12px; display: flex; justify-content: space-between; font-weight: 700; font-size: 20px;">
+                    <div style="border-top: 2.5px solid var(--brand-color); padding-top: 8px; display: flex; justify-content: space-between; font-weight: 700; font-size: 17px;">
                         <span>TOTAL</span>
                         <span>${Utils.formatCurrency(Utils.docTotal(this._doc.lineItems, this._doc.isTaxEnabled, this._doc))}</span>
                     </div>
@@ -255,7 +255,7 @@ const DocumentPreviewView = {
             </div>
 
             <!-- Meta Section -->
-            <div class="template-flex" style="justify-content: space-between; margin-bottom: 24px;">
+            <div class="template-flex" style="justify-content: space-between; margin-bottom: 16px;">
                 <div class="meta-section">
                     <span style="font-weight: 600; color: #1c1c1e;">FOR:</span>
                     <span style="font-weight: 500; color: #1c1c1e;">${Utils.escapeHtml(this._doc.clientName || 'No Client')}</span>
@@ -278,7 +278,7 @@ const DocumentPreviewView = {
             ${this._renderTable()}
 
             <!-- Totals Footer -->
-            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
                 <div style="width: 250px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 700; padding: 0 16px;">
                         <span>SUBTOTAL:</span>
@@ -290,7 +290,7 @@ const DocumentPreviewView = {
                         <span>${Utils.formatCurrency(Utils.docTax(this._doc.lineItems, this._doc.isTaxEnabled))}</span>
                     </div>
                     ` : ''}
-                    <div style="background: #1c1c1e; color: white; padding: 12px 16px; display: flex; justify-content: space-between; font-weight: 700; font-size: 20px;">
+                    <div style="background: #1c1c1e; color: white; padding: 9px 16px; display: flex; justify-content: space-between; font-weight: 700; font-size: 17px;">
                         <span>TOTAL</span>
                         <span>${Utils.formatCurrency(Utils.docTotal(this._doc.lineItems, this._doc.isTaxEnabled, this._doc))}</span>
                     </div>
@@ -306,7 +306,7 @@ const DocumentPreviewView = {
         const typeLabel = this._doc.documentType === 'invoice' ? 'INVOICE' : 'ESTIMATE';
         return `
             <!-- Top Section: Type left, Logo right -->
-            <div class="template-title-row template-flex" style="align-items: center; justify-content: space-between; margin-bottom: 40px;">
+            <div class="template-title-row template-flex" style="align-items: center; justify-content: space-between; margin-bottom: 24px;">
                 <div>
                     <h1 class="invoice-title invoice-title-modern">${typeLabel}</h1>
                 </div>
@@ -319,7 +319,7 @@ const DocumentPreviewView = {
             </div>
 
             <!-- Meta Section: 3 Columns -->
-            <div class="template-flex" style="margin-bottom: 24px;">
+            <div class="template-flex" style="margin-bottom: 16px;">
                 <div style="flex: 1;">
                     <div style="font-weight: 700; color: var(--brand-color); text-transform: uppercase; font-size: 12px; margin-bottom: 6px;">${typeLabel} FROM:</div>
                     <div style="font-weight: 700; font-size: 15px; color: #1c1c1e;">${Utils.escapeHtml(this._company.name || 'Your Company')}</div>
@@ -346,7 +346,7 @@ const DocumentPreviewView = {
             ${this._renderTable()}
 
             <!-- Totals Footer -->
-            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
                 <div style="width: 250px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 500; font-size: 13px; letter-spacing: 0.5px; padding: 0 16px;">
                         <span>SUBTOTAL:</span>
@@ -358,7 +358,7 @@ const DocumentPreviewView = {
                         <span>${Utils.formatCurrency(Utils.docTax(this._doc.lineItems, this._doc.isTaxEnabled))}</span>
                     </div>
                     ` : ''}
-                    <div style="background: #000; color: white; padding: 16px; display: flex; justify-content: space-between; font-weight: 700; font-size: 24px; letter-spacing: -0.5px;">
+                    <div style="background: #000; color: white; padding: 10px 16px; display: flex; justify-content: space-between; font-weight: 700; font-size: 18px; letter-spacing: -0.5px;">
                         <span>TOTAL</span>
                         <span>${Utils.formatCurrency(Utils.docTotal(this._doc.lineItems, this._doc.isTaxEnabled, this._doc))}</span>
                     </div>
@@ -380,7 +380,7 @@ const DocumentPreviewView = {
     _renderContractor() {
         const typeLabel = this._doc.documentType === 'invoice' ? 'INVOICE' : 'ESTIMATE';
         return `
-            <div style="display:flex; justify-content:space-between; gap:18px; margin-bottom:28px; border-bottom:4px solid var(--brand-color); padding-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; gap:18px; margin-bottom:18px; border-bottom:4px solid var(--brand-color); padding-bottom:12px;">
                 <div>
                     <div style="font-size:12px; font-weight:800; color:var(--brand-color); text-transform:uppercase;">Work Order Billing</div>
                     <h1 class="invoice-title invoice-title-contractor">${typeLabel}</h1>
@@ -391,7 +391,7 @@ const DocumentPreviewView = {
                     ${Utils.escapeHtml(this._company.email || '')}
                 </div>
             </div>
-            <div class="template-flex" style="justify-content:space-between; margin-bottom:20px;">
+            <div class="template-flex" style="justify-content:space-between; margin-bottom:14px;">
                 <div><strong>Client</strong><br>${Utils.escapeHtml(this._doc.clientName || 'No Client')}<br><span class="preview-meta-sub">${Utils.escapeHtml(this._client?.address || '')}</span></div>
                 <div style="text-align:right;"><strong>${Utils.escapeHtml(this._doc.documentID)}</strong><br>Created ${Utils.formatDate(this._doc.creationDate)}<br>Due ${Utils.formatDate(this._doc.dueDate)}</div>
             </div>
@@ -404,11 +404,11 @@ const DocumentPreviewView = {
     _renderMinimal() {
         const typeLabel = this._doc.documentType === 'invoice' ? 'Invoice' : 'Estimate';
         return `
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:34px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px;">
                 <h1 class="invoice-title invoice-title-minimal">${typeLabel}</h1>
                 <div style="text-align:right; font-size:13px; color:#555;">${Utils.escapeHtml(this._doc.documentID)}<br>${Utils.formatDate(this._doc.creationDate)}</div>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:16px;">
                 <div><div class="preview-meta-label">From</div><strong>${Utils.escapeHtml(this._company.name || 'Your Company')}</strong></div>
                 <div><div class="preview-meta-label">Bill To</div><strong>${Utils.escapeHtml(this._doc.clientName || 'No Client')}</strong></div>
             </div>
@@ -427,7 +427,7 @@ const DocumentPreviewView = {
         const balance = Utils.documentBalance(this._doc, this._payments);
         const deposit = Utils.docDeposit(this._doc);
         return `
-            <div style="display:flex; justify-content:flex-end; margin-top:24px;">
+            <div style="display:flex; justify-content:flex-end; margin-top:14px;">
                 <div style="width:260px;">
                     <div class="preview-total-row"><span>Subtotal</span><span>${Utils.formatCurrency(subtotal)}</span></div>
                     ${discount > 0 ? `<div class="preview-total-row"><span>Discount</span><span>-${Utils.formatCurrency(discount)}</span></div>` : ''}
@@ -443,9 +443,9 @@ const DocumentPreviewView = {
     _renderNotesBlock() {
         const text = [this._doc.clientMessage, this._doc.paymentTerms, this._doc.notes].filter(Boolean).join('\n\n');
         return text ? `
-            <div style="margin-top:32px;">
-                <div style="font-weight:700; color:#1c1c1e; margin-bottom:4px;">Notes</div>
-                <div style="color:#444; line-height:1.5; font-size:13px; white-space:pre-wrap;">${Utils.escapeHtml(text)}</div>
+            <div style="margin-top:18px;">
+                <div style="font-weight:700; color:#1c1c1e; margin-bottom:3px; font-size:13px;">Notes</div>
+                <div style="color:#444; line-height:1.45; font-size:11.5px; white-space:pre-wrap;">${Utils.escapeHtml(text)}</div>
             </div>
         ` : '';
     },
@@ -472,30 +472,43 @@ const DocumentPreviewView = {
 
     // ── Unified Table Builder ──
     _renderTable() {
+        const th = 'background: var(--brand-color); color: white; border: none; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; padding: 7px 10px;';
+        const td = 'padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 12px; color: #1c1c1e; line-height: 1.35;';
+        const sectionTd = 'padding: 8px 10px 5px; border-bottom: 1.5px solid var(--brand-color); background: #f7f8fa;';
+        const items = this._doc.lineItems || [];
+        const hasSections = items.some(i => i.type === 'section');
         return `
-            <table class="preview-table">
+            <table class="preview-table" style="margin: 0 0 14px;">
                 <thead>
                     <tr>
-                        <th style="background: var(--brand-color); color: white; border: none; font-weight: 500; font-size: 12px; text-transform: none; text-align: left; padding: 12px 16px;">Description</th>
-                        <th style="background: var(--brand-color); color: white; border: none; font-weight: 500; font-size: 12px; text-transform: none; text-align: right; padding: 12px 16px;">Quantity</th>
-                        <th style="background: var(--brand-color); color: white; border: none; font-weight: 500; font-size: 12px; text-transform: none; text-align: right; padding: 12px 16px;">Unit price</th>
-                        ${this._doc.isTaxEnabled ? '<th style="background: var(--brand-color); color: white; border: none; font-weight: 500; font-size: 12px; text-transform: none; text-align: right; padding: 12px 16px;">TAX</th>' : ''}
-                        <th style="background: var(--brand-color); color: white; border: none; font-weight: 500; font-size: 12px; text-transform: none; text-align: right; padding: 12px 16px;">Amount</th>
+                        <th style="${th} text-align: left;">Description</th>
+                        <th style="${th} text-align: right;">Qty</th>
+                        <th style="${th} text-align: right;">Unit price</th>
+                        ${this._doc.isTaxEnabled ? `<th style="${th} text-align: right;">Tax</th>` : ''}
+                        <th style="${th} text-align: right;">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${(this._doc.lineItems || []).map(item => `
+                    ${items.map((item, index) => {
+                        if (item.type === 'section') {
+                            return `
                         <tr>
-                            <td style="padding: 16px; border-bottom: 1px solid #eee;">
-                                <div style="font-weight: 700; color: var(--brand-color); text-transform: uppercase; font-size: 13px; margin-bottom: 4px; letter-spacing: 0.2px;">${Utils.escapeHtml(item.itemDescription || '—')}</div>
-                                ${item.itemNote ? `<div style="color: #777; font-size: 12px;">${Utils.escapeHtml(item.itemNote)}</div>` : ''}
+                            <td colspan="${this._doc.isTaxEnabled ? 4 : 3}" style="${sectionTd} font-weight: 800; color: #1c1c1e; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">${Utils.escapeHtml(item.itemDescription || 'Section')}</td>
+                            <td style="${sectionTd} text-align: right; font-size: 11.5px; font-weight: 700; color: #1c1c1e;">${Utils.formatCurrency(Utils.sectionSubtotal(items, index, this._doc.isTaxEnabled))}</td>
+                        </tr>`;
+                        }
+                        return `
+                        <tr>
+                            <td style="${td}${hasSections ? ' padding-left: 22px;' : ''}">
+                                <span style="font-weight: ${hasSections ? '600' : '700'}; color: ${hasSections ? '#1c1c1e' : 'var(--brand-color)'}; text-transform: ${hasSections ? 'none' : 'uppercase'}; letter-spacing: 0.2px;">${Utils.escapeHtml(item.itemDescription || '—')}</span>
+                                ${item.itemNote ? `<div style="color: #777; font-size: 10.5px; margin-top: 1px;">${Utils.escapeHtml(item.itemNote)}</div>` : ''}
                             </td>
-                            <td style="padding: 16px; text-align: right; border-bottom: 1px solid #eee; font-size: 13px; color: #1c1c1e;">${item.quantity || 0}</td>
-                            <td style="padding: 16px; text-align: right; border-bottom: 1px solid #eee; font-size: 13px; color: #1c1c1e;">${Utils.formatCurrency(item.unitPrice)}</td>
-                            ${this._doc.isTaxEnabled ? `<td style="padding: 16px; text-align: right; border-bottom: 1px solid #eee; font-size: 13px; color: #1c1c1e;">${item.taxRate || 0}%</td>` : ''}
-                            <td style="padding: 16px; text-align: right; border-bottom: 1px solid #eee; font-size: 13px; color: #1c1c1e;">${Utils.formatCurrency(Utils.lineTotal(item, this._doc.isTaxEnabled))}</td>
-                        </tr>
-                    `).join('')}
+                            <td style="${td} text-align: right;">${item.quantity || 0}</td>
+                            <td style="${td} text-align: right;">${Utils.formatCurrency(item.unitPrice)}</td>
+                            ${this._doc.isTaxEnabled ? `<td style="${td} text-align: right;">${item.taxRate || 0}%</td>` : ''}
+                            <td style="${td} text-align: right;">${Utils.formatCurrency(Utils.lineTotal(item, this._doc.isTaxEnabled))}</td>
+                        </tr>`;
+                    }).join('')}
                 </tbody>
             </table>
         `;
@@ -594,7 +607,7 @@ const DocumentPreviewView = {
                     body {
                         font-family: 'Inter', -apple-system, sans-serif;
                         color: #1a1a1a;
-                        padding: 40px;
+                        padding: 24px 32px;
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
                     }
@@ -713,27 +726,27 @@ const DocumentPreviewView = {
                 text-transform: uppercase;
                 overflow-wrap: anywhere;
             }
-            .invoice-title-modern { font-size: 52px; font-weight: 800; }
-            .invoice-title-classic { margin-bottom: 14px; font-size: 38px; font-weight: 500; letter-spacing: 1.5px; }
+            .invoice-title-modern { font-size: 38px; font-weight: 800; }
+            .invoice-title-classic { margin-bottom: 10px; font-size: 30px; font-weight: 500; letter-spacing: 1.5px; }
             .invoice-title-bold {
                 display: inline-block;
-                padding: 8px 16px;
+                padding: 6px 14px;
                 background: #ffffff;
                 color: #101114;
                 border: 2px solid #101114;
-                font-size: 48px;
+                font-size: 36px;
                 font-weight: 900;
             }
-            .invoice-title-contractor { margin-top: 4px; font-size: 42px; font-weight: 900; }
-            .invoice-title-minimal { font-size: 34px; font-weight: 650; text-transform: none; }
+            .invoice-title-contractor { margin-top: 4px; font-size: 32px; font-weight: 900; }
+            .invoice-title-minimal { font-size: 27px; font-weight: 650; text-transform: none; }
             .invoice-company-title { margin: 0; color: #111827; font-size: 28px; font-weight: 800; }
             .invoice-company-title-large { font-size: 32px; }
             .bold-title-lockup {
                 position: relative;
                 z-index: 2;
                 text-align: center;
-                margin-top: -56px;
-                margin-bottom: 34px;
+                margin-top: -48px;
+                margin-bottom: 22px;
             }
             .preview-header {
                 display: flex;

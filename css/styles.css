@@ -904,6 +904,80 @@ textarea.ios-input {
     transform: scale(0.9);
 }
 
+/* ── Drag-to-Reorder ── */
+.line-item-drag {
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    color: var(--color-label-tertiary);
+    font-size: 15px;
+    line-height: 1;
+    cursor: grab;
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.line-item-drag:active {
+    cursor: grabbing;
+    color: var(--color-label-secondary);
+}
+
+.line-item-card.dragging {
+    position: relative;
+    z-index: 5;
+    background: var(--color-bg-elevated);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    opacity: 0.95;
+}
+
+.line-item-card.dragging::after {
+    display: none;
+}
+
+/* ── Section Header Rows ── */
+.line-item-section {
+    background: var(--color-fill-tertiary);
+}
+
+.section-item-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.section-item-name {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: var(--font-body);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-label);
+}
+
+.section-item-name::placeholder {
+    color: var(--color-label-tertiary);
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
+.section-item-subtotal {
+    font: var(--font-subhead);
+    font-weight: 700;
+    color: var(--color-label-secondary);
+    white-space: nowrap;
+}
+
 /* ── Totals Footer ── */
 .totals-row {
     display: flex;
@@ -1496,35 +1570,35 @@ textarea.ios-input {
 }
 
 .invoice-title-modern {
-    font-size: 52px;
+    font-size: 38px;
     font-weight: 800;
 }
 
 .invoice-title-classic {
-    margin-bottom: 14px;
-    font-size: 38px;
+    margin-bottom: 10px;
+    font-size: 30px;
     font-weight: 500;
     letter-spacing: 1.5px;
 }
 
 .invoice-title-bold {
     display: inline-block;
-    padding: 8px 16px;
+    padding: 6px 14px;
     background: #ffffff;
     color: #101114;
     border: 2px solid #101114;
-    font-size: 48px;
+    font-size: 36px;
     font-weight: 900;
 }
 
 .invoice-title-contractor {
     margin-top: 4px;
-    font-size: 42px;
+    font-size: 32px;
     font-weight: 900;
 }
 
 .invoice-title-minimal {
-    font-size: 34px;
+    font-size: 27px;
     font-weight: 650;
     text-transform: none;
 }
@@ -1544,8 +1618,8 @@ textarea.ios-input {
     position: relative;
     z-index: 2;
     text-align: center;
-    margin-top: -56px;
-    margin-bottom: 34px;
+    margin-top: -48px;
+    margin-bottom: 22px;
 }
 
 .template-classic {

@@ -316,6 +316,7 @@ const Utils = {
 
     // ── Compute line item values ──
     lineSubtotal(item) {
+        if (item.type === 'section') return 0;
         return (item.quantity || 0) * (item.unitPrice || 0);
     },
 
@@ -326,6 +327,16 @@ const Utils = {
 
     lineTotal(item, isTaxEnabled = true) {
         return this.lineSubtotal(item) + this.lineTax(item, isTaxEnabled);
+    },
+
+    // ── Subtotal of the items under a section header (up to the next section) ──
+    sectionSubtotal(lineItems, sectionIndex, isTaxEnabled = true) {
+        let sum = 0;
+        for (let i = sectionIndex + 1; i < (lineItems || []).length; i++) {
+            if (lineItems[i].type === 'section') break;
+            sum += this.lineTotal(lineItems[i], isTaxEnabled);
+        }
+        return sum;
     },
 
     // ── Compute document totals ──
@@ -431,6 +442,19 @@ const Utils = {
         return map[status] || map.draft;
     },
 
+    // ── Short client code for per-client document numbering ──
+    // "John Smith" → "JS", "Acme" → "ACM", "3M Corp" → "3C"
+    clientCode(name) {
+        const clean = (name || '').replace(/[^A-Za-z0-9\s]/g, ' ').trim();
+        if (!clean) return 'CLI';
+        const words = clean.split(/\s+/);
+        let code = words.map(w => w[0]).join('').toUpperCase();
+        if (code.length < 2) {
+            code = clean.replace(/\s+/g, '').toUpperCase().slice(0, 3);
+        }
+        return code.slice(0, 3);
+    },
+
     // ── Generate initials from name ──
     initials(name) {
         if (!name) return '?';
@@ -516,6 +540,7 @@ const Utils = {
                 date: new Date().toISOString(),
             }],
             lineItems: (estimate.lineItems || []).map(item => ({
+                type: item.type || 'item',
                 itemDescription: item.itemDescription,
                 itemNote: item.itemNote || '',
                 quantity: item.quantity,

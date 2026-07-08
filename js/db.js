@@ -111,12 +111,18 @@ class InvoiceMagicDB {
             const tx = db.transaction(storeName, mode);
             const store = tx.objectStore(storeName);
             const result = callback(store);
+            const done = (value) => {
+                if (mode === 'readwrite' && typeof CloudSync !== 'undefined') {
+                    CloudSync.scheduleBackup();
+                }
+                resolve(value);
+            };
 
             if (result && result.onsuccess !== undefined) {
-                result.onsuccess = () => resolve(result.result);
+                result.onsuccess = () => done(result.result);
                 result.onerror = () => reject(result.error);
             } else {
-                tx.oncomplete = () => resolve(result);
+                tx.oncomplete = () => done(result);
                 tx.onerror = () => reject(tx.error);
             }
         });
@@ -140,6 +146,10 @@ class InvoiceMagicDB {
 
     async delete(storeName, id) {
         return this._transaction(storeName, 'readwrite', (store) => store.delete(id));
+    }
+
+    async clear(storeName) {
+        return this._transaction(storeName, 'readwrite', (store) => store.clear());
     }
 
     async getAllByIndex(storeName, indexName, value) {
@@ -189,7 +199,10 @@ class InvoiceMagicDB {
         const doc = await this.getDocument(id);
         if (!doc) return null;
 
-        const nextNumber = await this.getNextDocumentNumber(doc.documentType);
+        const nextNumber = await this.getNextDocumentNumber(
+            doc.documentType,
+            doc.clientId ? { id: doc.clientId, name: doc.clientName } : null
+        );
         const clone = {
             ...doc,
             documentID: nextNumber,
@@ -214,9 +227,27 @@ class InvoiceMagicDB {
         return this.saveDocument(clone);
     }
 
-    async getNextDocumentNumber(type) {
+    // Numbering: documents with a client get their own per-client sequence
+    // (e.g. INV-JS-001, INV-JS-002 for "John Smith"); documents without a
+    // client use the global sequence (INV-0001).
+    async getNextDocumentNumber(type, client = null) {
         const prefix = type === 'invoice' ? 'INV' : 'EST';
         const docs = await this.getAllByIndex(STORES.DOCUMENTS, 'documentType', type);
+
+        if (client && client.id) {
+            const code = Utils.clientCode(client.name);
+            // Match any client-coded number so the sequence continues even
+            // if the client was renamed (old code differs from current).
+            const re = new RegExp(`^${prefix}-[A-Z0-9]{1,3}-(\\d+)$`);
+            const maxSeq = docs.reduce((max, doc) => {
+                if (doc.clientId !== client.id) return max;
+                const m = (doc.documentID || '').match(re);
+                const num = m ? parseInt(m[1], 10) : 0;
+                return isNaN(num) ? max : Math.max(max, num);
+            }, 0);
+            return `${prefix}-${code}-${String(maxSeq + 1).padStart(3, '0')}`;
+        }
+
         const maxSeq = docs.reduce((max, doc) => {
             const parts = doc.documentID ? doc.documentID.split('-') : [];
             const num = parts.length === 2 ? parseInt(parts[1], 10) : 0;

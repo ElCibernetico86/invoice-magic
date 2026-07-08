@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Local tooling / editor
+.claude/
+.vscode/
+
+# Vercel
+.vercel
+
+# Logs
+*.log

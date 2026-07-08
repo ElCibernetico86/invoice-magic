@@ -207,6 +207,11 @@ const DocumentEditorView = {
                                 <span style="font-size: 20px;">+</span> Add Line Item
                             </span>
                         </div>
+                        <div class="ios-cell ios-cell-interactive" id="add-section" style="justify-content: center;">
+                            <span class="text-blue fw-semibold" style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 20px;">+</span> Add Section
+                            </span>
+                        </div>
                         ${this._catalog.length ? `
                         <div class="ios-cell ios-cell-interactive" id="add-catalog-item" style="justify-content: center;">
                             <span class="text-blue fw-semibold">Add From Catalog</span>
@@ -298,6 +303,26 @@ const DocumentEditorView = {
         this._bindEvents(container);
     },
 
+    // ── Switch to the client's own number sequence when a client is assigned ──
+    // Only touches numbers that still look auto-generated (INV-0001 or
+    // INV-JS-001 style); manually customized numbers are left alone.
+    async _renumberForClient(container) {
+        const doc = this._currentDoc;
+        if (!doc.clientId) return;
+        const isAutoNumber = /^(INV|EST)-(?:[A-Z0-9]{1,3}-)?\d{3,4}$/.test(doc.documentID || '');
+        if (!isAutoNumber) return;
+
+        const next = await db.getNextDocumentNumber(doc.documentType, { id: doc.clientId, name: doc.clientName });
+        if (next === doc.documentID) return;
+
+        doc.documentID = next;
+        const numInput = container.querySelector('#editor-document-id');
+        if (numInput) numInput.value = next;
+        const navTitle = document.getElementById('nav-title');
+        if (navTitle) navTitle.textContent = next;
+        Toast.show(`Number set to ${next}`, 'info');
+    },
+
     // ── Get current client field value ──
     _getClientField(field) {
         if (!this._currentDoc || !this._currentDoc.clientId) return '';
@@ -308,7 +333,20 @@ const DocumentEditorView = {
     // ── Render line items ──
     _renderLineItems(items) {
         if (!items || items.length === 0) return '';
-        return items.map((item, index) => `
+        return items.map((item, index) => item.type === 'section' ? `
+            <div class="line-item-card line-item-section" data-index="${index}">
+                <div class="section-item-row">
+                    <button class="line-item-drag" aria-label="Reorder section">⠿</button>
+                    <input type="text" class="section-item-name" placeholder="Section name (e.g. Master Bathroom)"
+                           value="${Utils.escapeHtml(item.itemDescription || '')}"
+                           data-field="itemDescription" data-index="${index}">
+                    <div class="section-item-subtotal" data-section-subtotal="${index}">
+                        ${Utils.formatCurrency(Utils.sectionSubtotal(items, index, this._currentDoc?.isTaxEnabled))}
+                    </div>
+                    <button class="line-item-delete" data-delete-index="${index}" aria-label="Delete section">−</button>
+                </div>
+            </div>
+        ` : `
             <div class="line-item-card" data-index="${index}">
                 <input type="text" class="line-item-desc" placeholder="Description"
                        value="${Utils.escapeHtml(item.itemDescription || '')}"
@@ -338,6 +376,7 @@ const DocumentEditorView = {
                     <div class="line-item-total" data-total-index="${index}">
                         ${Utils.formatCurrency(Utils.lineTotal(item, this._currentDoc?.isTaxEnabled))}
                     </div>
+                    <button class="line-item-drag" aria-label="Reorder item">⠿</button>
                     <button class="line-item-delete" data-delete-index="${index}" aria-label="Delete item">−</button>
                 </div>
             </div>
@@ -515,6 +554,7 @@ const DocumentEditorView = {
                             container.querySelector('#editor-client-address').value = client.address || '';
 
                             Utils.haptic('light');
+                            await self._renumberForClient(container);
                             self._autoSave();
                         }
                     });
@@ -534,6 +574,7 @@ const DocumentEditorView = {
                     self._currentDoc.clientName = client.name;
                     self._allClients = await db.getAllClients();
                     clientDetailsEl.style.display = '';
+                    await self._renumberForClient(container);
                     self._autoSave();
                 }
             } else if (name) {
@@ -665,6 +706,23 @@ const DocumentEditorView = {
             self._autoSave();
         });
 
+        // ── Add section header ──
+        container.querySelector('#add-section').addEventListener('click', () => {
+            self._currentDoc.lineItems.push({
+                type: 'section',
+                itemDescription: '',
+                quantity: 0,
+                unitPrice: 0,
+                taxRate: 0,
+            });
+            Utils.haptic('light');
+            self._refreshLineItems(container);
+            self._autoSave();
+            // Focus the new section name input
+            const inputs = container.querySelectorAll('.section-item-name');
+            if (inputs.length) inputs[inputs.length - 1].focus();
+        });
+
         const addCatalogBtn = container.querySelector('#add-catalog-item');
         if (addCatalogBtn) {
             addCatalogBtn.addEventListener('click', () => self._showCatalogPicker(container));
@@ -779,6 +837,12 @@ const DocumentEditorView = {
                     totalEl.textContent = Utils.formatCurrency(Utils.lineTotal(self._currentDoc.lineItems[index], self._currentDoc.isTaxEnabled));
                 }
 
+                // Update section subtotals
+                container.querySelectorAll('[data-section-subtotal]').forEach(el => {
+                    const sIndex = parseInt(el.dataset.sectionSubtotal, 10);
+                    el.textContent = Utils.formatCurrency(Utils.sectionSubtotal(self._currentDoc.lineItems, sIndex, self._currentDoc.isTaxEnabled));
+                });
+
                 // Update footer totals
                 container.querySelector('#totals-footer').innerHTML = self._renderTotals(self._currentDoc.lineItems);
 
@@ -796,6 +860,82 @@ const DocumentEditorView = {
                     self._refreshLineItems(container);
                     self._autoSave();
                 }
+            });
+        });
+
+        this._bindDragEvents(container);
+    },
+
+    // ── Drag-to-reorder line items ──
+    _bindDragEvents(container) {
+        const self = this;
+        const lineContainer = container.querySelector('#line-items-container');
+
+        lineContainer.querySelectorAll('.line-item-drag').forEach(handle => {
+            handle.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                const card = handle.closest('.line-item-card');
+                if (!card) return;
+                const cards = () => [...lineContainer.querySelectorAll('.line-item-card')];
+
+                card.classList.add('dragging');
+                try { handle.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
+                Utils.haptic('light');
+
+                let lastY = e.clientY;
+                let raf = null;
+
+                // Move the card in the DOM to follow the pointer
+                const reorderAt = (y) => {
+                    for (const other of cards()) {
+                        if (other === card) continue;
+                        const rect = other.getBoundingClientRect();
+                        if (y > rect.top && y < rect.bottom) {
+                            if (y < rect.top + rect.height / 2) {
+                                lineContainer.insertBefore(card, other);
+                            } else {
+                                lineContainer.insertBefore(card, other.nextSibling);
+                            }
+                            break;
+                        }
+                    }
+                };
+
+                // Auto-scroll while holding near the screen edges
+                const scrollLoop = () => {
+                    if (lastY < 110) window.scrollBy(0, -10);
+                    else if (lastY > window.innerHeight - 110) window.scrollBy(0, 10);
+                    reorderAt(lastY);
+                    raf = requestAnimationFrame(scrollLoop);
+                };
+                raf = requestAnimationFrame(scrollLoop);
+
+                const move = (ev) => {
+                    lastY = ev.clientY;
+                    reorderAt(lastY);
+                };
+
+                const finish = () => {
+                    handle.removeEventListener('pointermove', move);
+                    handle.removeEventListener('pointerup', finish);
+                    handle.removeEventListener('pointercancel', finish);
+                    cancelAnimationFrame(raf);
+                    card.classList.remove('dragging');
+
+                    // Rebuild the model from the new DOM order
+                    const order = cards().map(el => parseInt(el.dataset.index, 10));
+                    const changed = order.some((orig, pos) => orig !== pos);
+                    if (changed) {
+                        self._currentDoc.lineItems = order.map(i => self._currentDoc.lineItems[i]);
+                        Utils.haptic('medium');
+                        self._autoSave();
+                    }
+                    self._refreshLineItems(container);
+                };
+
+                handle.addEventListener('pointermove', move);
+                handle.addEventListener('pointerup', finish);
+                handle.addEventListener('pointercancel', finish);
             });
         });
     },
@@ -1073,7 +1213,10 @@ const DocumentEditorView = {
     // ── Perform estimate → invoice conversion ──
     async _performConversion() {
         const estimate = this._currentDoc;
-        const newDocID = await db.getNextDocumentNumber('invoice');
+        const newDocID = await db.getNextDocumentNumber(
+            'invoice',
+            estimate.clientId ? { id: estimate.clientId, name: estimate.clientName } : null
+        );
         const invoice = Utils.cloneDocumentForConversion(estimate, newDocID);
         const invoiceId = await db.saveDocument(invoice);
 
@@ -1092,7 +1235,10 @@ const DocumentEditorView = {
     async _createNextRecurring() {
         await this.saveNow();
         const current = this._currentDoc;
-        const nextDocID = await db.getNextDocumentNumber(current.documentType);
+        const nextDocID = await db.getNextDocumentNumber(
+            current.documentType,
+            current.clientId ? { id: current.clientId, name: current.clientName } : null
+        );
         const days = { weekly: 7, monthly: 30, quarterly: 90, yearly: 365 }[current.recurring] || 30;
         const next = {
             ...current,

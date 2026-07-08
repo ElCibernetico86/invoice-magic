@@ -5,12 +5,14 @@
 // application loads instantly even without a network connection.
 // ============================================================
 
-const CACHE_NAME = 'invoice-magic-v12';
+const CACHE_NAME = 'invoice-magic-v14';
 
 const ASSETS = [
     '/',
     '/index.html',
     '/css/styles.css',
+    '/js/firebase-config.js',
+    '/js/cloudSync.js',
     '/js/db.js',
     '/js/toast.js',
     '/js/utils.js',

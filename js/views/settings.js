@@ -169,6 +169,17 @@ const SettingsView = {
                     </div>
                 </div>
 
+                <!-- Cloud Backup Section -->
+                <div class="ios-section">
+                    <div class="ios-section-header">Cloud Backup</div>
+                    <div class="ios-section-content" id="cloud-section">
+                        ${this._renderCloudSection()}
+                    </div>
+                    <div class="ios-section-footer">
+                        ${this._cloudFooterText()}
+                    </div>
+                </div>
+
                 <!-- Data Management Section -->
                 <div class="ios-section">
                     <div class="ios-section-header">Data</div>
@@ -205,7 +216,7 @@ const SettingsView = {
                         </div>
                         <div class="ios-cell">
                             <span class="ios-cell-title">Storage</span>
-                            <span class="ios-cell-value">Local (IndexedDB)</span>
+                            <span class="ios-cell-value">${typeof CloudSync !== 'undefined' && CloudSync.isSignedIn() ? 'Local + Cloud' : 'Local (IndexedDB)'}</span>
                         </div>
                         <div class="ios-cell">
                             <span class="ios-cell-title">Platform</span>
@@ -213,13 +224,97 @@ const SettingsView = {
                         </div>
                     </div>
                     <div class="ios-section-footer">
-                        Invoice Magic stores all data locally on your device. Your data never leaves this browser.
+                        Invoice Magic stores all data locally on your device. If you sign in to Cloud Backup, an encrypted copy is kept in your private account.
                     </div>
                 </div>
             </div>
         `;
 
         this._bindEvents(container);
+    },
+
+    // ── Cloud section markup (three states) ──
+    _renderCloudSection() {
+        const cloud = typeof CloudSync !== 'undefined' ? CloudSync : null;
+
+        if (!cloud || !cloud.sdkLoaded() || !cloud.isConfigured() || !cloud.isReady()) {
+            return `
+                <div class="ios-cell" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                    <span class="ios-cell-title">Not configured</span>
+                    <span style="font-size: 13px; color: var(--color-label-secondary); line-height: 1.4;">
+                        Cloud backup is off. To turn it on, follow the free 10-minute setup in
+                        <strong>SETUP-CLOUD.md</strong> (in the app folder), then reload.
+                    </span>
+                </div>
+            `;
+        }
+
+        if (!cloud.isSignedIn()) {
+            return `
+                <div class="ios-cell" style="flex-direction: column; align-items: stretch; padding: 14px 16px;">
+                    <button class="settings-action-btn settings-action-export" id="cloud-google" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+                        Continue with Google
+                    </button>
+                </div>
+                <div class="ios-cell" style="justify-content: center; padding: 6px 16px;">
+                    <span style="font-size: 12px; color: var(--color-label-tertiary); text-transform: uppercase; letter-spacing: 0.04em;">or use email</span>
+                </div>
+                <div class="ios-cell">
+                    <span class="ios-input-label">Email</span>
+                    <input type="email" class="ios-input" id="cloud-email" placeholder="you@email.com" autocomplete="email">
+                </div>
+                <div class="ios-cell">
+                    <span class="ios-input-label">Password</span>
+                    <input type="password" class="ios-input" id="cloud-password" placeholder="6+ characters" autocomplete="current-password">
+                </div>
+                <div class="ios-cell" style="flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 16px;">
+                    <div class="settings-actions-row">
+                        <button class="settings-action-btn settings-action-export" id="cloud-sign-in">Sign In</button>
+                        <button class="settings-action-btn settings-action-import" id="cloud-sign-up">Create Account</button>
+                    </div>
+                </div>
+                <div class="ios-cell ios-cell-interactive" id="cloud-forgot" style="justify-content: center;">
+                    <span class="text-blue" style="font-size: 14px;">Forgot password?</span>
+                </div>
+            `;
+        }
+
+        const last = cloud.lastBackupAt();
+        return `
+            <div class="ios-cell">
+                <span class="ios-cell-title">Account</span>
+                <span class="ios-cell-value">${Utils.escapeHtml(cloud.userEmail())}</span>
+            </div>
+            <div class="ios-cell">
+                <span class="ios-cell-title">Last Backup</span>
+                <span class="ios-cell-value" id="cloud-last-backup">${last ? Utils.formatDate(last) : 'Never'}</span>
+            </div>
+            <div class="ios-cell ios-cell-interactive" id="cloud-auto-cell">
+                <span class="ios-input-label">Auto Backup</span>
+                <div class="ios-toggle ${cloud.autoBackupEnabled() ? 'active' : ''}" id="cloud-auto-toggle"></div>
+            </div>
+            <div class="ios-cell" style="flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 16px;">
+                <div class="settings-actions-row">
+                    <button class="settings-action-btn settings-action-export" id="cloud-backup-now">Back Up Now</button>
+                    <button class="settings-action-btn settings-action-import" id="cloud-restore">Restore</button>
+                </div>
+            </div>
+            <div class="ios-cell ios-cell-interactive" id="cloud-sign-out" style="justify-content: center;">
+                <span class="text-red fw-semibold">Sign Out</span>
+            </div>
+        `;
+    },
+
+    _cloudFooterText() {
+        const cloud = typeof CloudSync !== 'undefined' ? CloudSync : null;
+        if (!cloud || !cloud.isReady()) {
+            return 'Optional: back up your invoices, estimates, clients, and settings to a free private cloud account so you can recover them on any device.';
+        }
+        if (!cloud.isSignedIn()) {
+            return 'Sign in (or create a free account) to back up your data to the cloud. Your data is private to your account.';
+        }
+        return 'With Auto Backup on, changes are backed up a few seconds after you make them. Restore replaces the data on this device with the cloud copy.';
     },
 
     // ── Bind events ──
@@ -489,5 +584,156 @@ const SettingsView = {
                 Toast.show('Invalid JSON file', 'error');
             }
         });
+
+        this._bindCloudEvents(container);
+    },
+
+    // ── Cloud backup events ──
+    _bindCloudEvents(container) {
+        const self = this;
+        const cloud = typeof CloudSync !== 'undefined' ? CloudSync : null;
+        if (!cloud || !cloud.isReady()) return;
+
+        // Re-render this view when auth state changes while it's open
+        cloud.onAuthChanged = () => {
+            if (App._currentView === 'settings') self.render(container);
+        };
+        cloud.onBackupDone = () => {
+            const el = container.querySelector('#cloud-last-backup');
+            if (el) el.textContent = Utils.formatDate(cloud.lastBackupAt());
+        };
+
+        const googleBtn = container.querySelector('#cloud-google');
+        if (googleBtn) {
+            googleBtn.addEventListener('click', async () => {
+                googleBtn.disabled = true;
+                try {
+                    await cloud.signInWithGoogle();
+                    Utils.haptic('success');
+                    Toast.show('Signed in with Google', 'success');
+                } catch (err) {
+                    if (err && err.code !== 'auth/popup-closed-by-user') {
+                        Toast.show(cloud.friendlyAuthError(err), 'error');
+                    }
+                } finally {
+                    googleBtn.disabled = false;
+                }
+            });
+        }
+
+        const signInBtn = container.querySelector('#cloud-sign-in');
+        const signUpBtn = container.querySelector('#cloud-sign-up');
+        const credentials = () => ({
+            email: (container.querySelector('#cloud-email')?.value || '').trim(),
+            password: container.querySelector('#cloud-password')?.value || '',
+        });
+
+        if (signInBtn) {
+            signInBtn.addEventListener('click', async () => {
+                const { email, password } = credentials();
+                if (!email || !password) return Toast.show('Enter email and password', 'error');
+                signInBtn.disabled = true;
+                try {
+                    await cloud.signIn(email, password);
+                    Utils.haptic('success');
+                    Toast.show('Signed in', 'success');
+                } catch (err) {
+                    Toast.show(cloud.friendlyAuthError(err), 'error');
+                } finally {
+                    signInBtn.disabled = false;
+                }
+            });
+        }
+
+        if (signUpBtn) {
+            signUpBtn.addEventListener('click', async () => {
+                const { email, password } = credentials();
+                if (!email || !password) return Toast.show('Enter email and password', 'error');
+                signUpBtn.disabled = true;
+                try {
+                    await cloud.signUp(email, password);
+                    Utils.haptic('success');
+                    Toast.show('Account created', 'success');
+                    // First backup right away so the account isn't empty
+                    cloud.backupNow(true);
+                } catch (err) {
+                    Toast.show(cloud.friendlyAuthError(err), 'error');
+                } finally {
+                    signUpBtn.disabled = false;
+                }
+            });
+        }
+
+        const forgotBtn = container.querySelector('#cloud-forgot');
+        if (forgotBtn) {
+            forgotBtn.addEventListener('click', async () => {
+                const { email } = credentials();
+                if (!email) return Toast.show('Enter your email first', 'error');
+                try {
+                    await cloud.resetPassword(email);
+                    Toast.show('Password reset email sent', 'success');
+                } catch (err) {
+                    Toast.show(cloud.friendlyAuthError(err), 'error');
+                }
+            });
+        }
+
+        const autoCell = container.querySelector('#cloud-auto-cell');
+        if (autoCell) {
+            autoCell.addEventListener('click', () => {
+                const toggle = container.querySelector('#cloud-auto-toggle');
+                toggle.classList.toggle('active');
+                cloud.setAutoBackup(toggle.classList.contains('active'));
+                Utils.haptic('light');
+            });
+        }
+
+        const backupBtn = container.querySelector('#cloud-backup-now');
+        if (backupBtn) {
+            backupBtn.addEventListener('click', async () => {
+                backupBtn.disabled = true;
+                backupBtn.textContent = 'Backing up…';
+                await cloud.backupNow(false);
+                backupBtn.disabled = false;
+                backupBtn.textContent = 'Back Up Now';
+            });
+        }
+
+        const restoreBtn = container.querySelector('#cloud-restore');
+        if (restoreBtn) {
+            restoreBtn.addEventListener('click', () => {
+                const overlay = document.createElement('div');
+                overlay.className = 'modal-overlay';
+                overlay.innerHTML = `
+                    <div class="modal-sheet">
+                        <div class="modal-handle"></div>
+                        <div class="modal-title">Restore From Cloud?</div>
+                        <div class="modal-message">
+                            This replaces all data on this device with your latest cloud backup. Anything created here since that backup will be lost.
+                        </div>
+                        <div class="modal-actions">
+                            <button class="modal-action-btn modal-action-primary" id="cloud-restore-confirm">Restore</button>
+                            <button class="modal-action-btn modal-action-cancel" id="cloud-restore-cancel">Cancel</button>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('app').appendChild(overlay);
+                overlay.querySelector('#cloud-restore-cancel').addEventListener('click', () => overlay.remove());
+                overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+                overlay.querySelector('#cloud-restore-confirm').addEventListener('click', async () => {
+                    overlay.remove();
+                    const ok = await cloud.restoreFromCloud();
+                    if (ok) self.render(container);
+                });
+            });
+        }
+
+        const signOutBtn = container.querySelector('#cloud-sign-out');
+        if (signOutBtn) {
+            signOutBtn.addEventListener('click', async () => {
+                await cloud.signOutUser();
+                Toast.show('Signed out', 'info');
+            });
+        }
     },
 };
