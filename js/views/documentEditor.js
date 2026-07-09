@@ -132,7 +132,7 @@ const DocumentEditorView = {
                                    autocomplete="off">
                         </div>
                         <div class="ios-cell ios-cell-interactive" id="editor-tax-toggle-cell">
-                            <span class="ios-input-label">Tax Enabled</span>
+                            <span class="ios-input-label">Charge Tax</span>
                             <div class="ios-toggle ${doc.isTaxEnabled ? 'active' : ''}" id="editor-tax-toggle"></div>
                         </div>
                         <div class="ios-cell">
@@ -195,6 +195,7 @@ const DocumentEditorView = {
                                    value="${Utils.escapeHtml(doc.paymentLink || '')}">
                         </div>
                     </div>
+                    <div class="ios-section-footer">Turn off <strong>Charge Tax</strong> to remove the tax column and all tax from this ${typeLabel.toLowerCase()} and its PDF.</div>
                 </div>
 
                 <!-- Line Items Section -->

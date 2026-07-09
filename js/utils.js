@@ -484,7 +484,7 @@ const Utils = {
             clientMessage: '',
             clientId: null,
             clientName: '',
-            isTaxEnabled: true,
+            isTaxEnabled: false,
             discountType: 'none',
             discountValue: 0,
             depositType: 'none',
