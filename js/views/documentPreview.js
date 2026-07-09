@@ -11,7 +11,6 @@ const DocumentPreviewView = {
     _company: null,
     _client: null,
     _payments: [],
-    _pdfLibsPromise: null,
 
     // ── Render the preview ──
     async render(container, docId) {
@@ -63,11 +62,8 @@ const DocumentPreviewView = {
                 <!-- Action Buttons -->
                 <div class="preview-actions">
                     <button class="preview-action-btn" id="preview-export-pdf">
-                        <span>Export PDF</span>
-                    </button>
-                    <button class="preview-action-btn" id="preview-print">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                        <span>Print</span>
+                        <span>Export PDF</span>
                     </button>
                     <button class="preview-action-btn secondary" id="preview-copy-pay">
                         <span>Copy Pay</span>
@@ -532,11 +528,6 @@ const DocumentPreviewView = {
             this._exportPDF();
         });
 
-        container.querySelector('#preview-print').addEventListener('click', () => {
-            Utils.haptic('light');
-            this._printDocument();
-        });
-
         container.querySelector('#preview-copy-pay').addEventListener('click', async () => {
             await this._copyPaymentRequest(container);
         });
@@ -583,134 +574,18 @@ const DocumentPreviewView = {
         this.render(container, this._doc.id);
     },
 
-    // ── Export a real PDF file (jsPDF + html2canvas) ──
-    async _exportPDF() {
+    // ── Export via the browser's print engine (vector-quality PDF) ──
+    // The print stylesheet isolates the document card; choose "Save as PDF"
+    // in the dialog to save, or pick a printer to print. Runs in-page — the
+    // old popup-window approach crashed the iOS PWA.
+    _exportPDF() {
         const typeLabel = this._doc.documentType === 'invoice' ? 'Invoice' : 'Estimate';
-        const title = `${typeLabel} ${this._doc.documentID}`;
-        const filename = `${title}.pdf`;
-        const source = document.getElementById('preview-card');
-        if (!source) return;
-
-        Toast.show('Building PDF…', 'info');
-        let holder = null;
-        try {
-            await this._ensurePdfLibs();
-
-            // Render an off-screen copy at a fixed A4-ish width so the PDF
-            // looks the same regardless of the device's screen size.
-            holder = document.createElement('div');
-            holder.style.cssText = 'position:fixed; left:-10000px; top:0; width:794px; background:#ffffff; box-sizing:border-box;';
-            const clone = source.cloneNode(true);
-            clone.id = '';
-            clone.style.width = '100%';
-            clone.style.maxWidth = 'none';
-            clone.style.boxShadow = 'none';
-            clone.style.borderRadius = '0';
-            holder.appendChild(clone);
-            document.body.appendChild(holder);
-
-            const canvas = await html2canvas(holder, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
-            document.body.removeChild(holder);
-            holder = null;
-
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pageW = pdf.internal.pageSize.getWidth();
-            const pageH = pdf.internal.pageSize.getHeight();
-            const margin = 10;                          // mm margin on every side
-            const contentW = pageW - margin * 2;
-            const contentH = pageH - margin * 2;
-            const pxPerMm = canvas.width / contentW;    // canvas px per mm
-            const pageSlicePx = Math.floor(contentH * pxPerMm);
-
-            // Slice the tall render into page-sized chunks, each drawn inside
-            // the margins, so every page has proper spacing on all four sides
-            // and the next page restarts at the top margin (no edge overflow).
-            let offset = 0;
-            let page = 0;
-            while (offset < canvas.height) {
-                const slicePx = Math.min(pageSlicePx, canvas.height - offset);
-                const slice = document.createElement('canvas');
-                slice.width = canvas.width;
-                slice.height = slicePx;
-                const ctx = slice.getContext('2d');
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, slice.width, slice.height);
-                ctx.drawImage(canvas, 0, offset, canvas.width, slicePx, 0, 0, canvas.width, slicePx);
-                const sliceHmm = slicePx / pxPerMm;
-                if (page > 0) pdf.addPage();
-                pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, contentW, sliceHmm, undefined, 'FAST');
-                offset += slicePx;
-                page++;
-            }
-
-            await this._saveOrSharePdf(pdf.output('blob'), filename);
-
-            Utils.addActivity(this._doc, 'exported', 'PDF exported', title);
-            await db.saveDocument(this._doc);
-            Toast.show('PDF ready', 'success');
-        } catch (err) {
-            console.warn('PDF export failed', err);
-            if (holder && holder.parentNode) holder.parentNode.removeChild(holder);
-            Toast.show('Could not build PDF — try Print instead', 'error');
-        }
-    },
-
-    // ── Lazy-load the PDF libraries on first use ──
-    _ensurePdfLibs() {
-        if (window.jspdf && window.html2canvas) return Promise.resolve();
-        if (this._pdfLibsPromise) return this._pdfLibsPromise;
-        const load = (src) => new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = src;
-            s.onload = resolve;
-            s.onerror = () => reject(new Error('Failed to load ' + src));
-            document.head.appendChild(s);
-        });
-        this._pdfLibsPromise = Promise.all([
-            load('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
-            load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
-        ]).catch((err) => {
-            this._pdfLibsPromise = null; // allow retry
-            throw err;
-        });
-        return this._pdfLibsPromise;
-    },
-
-    // ── Hand the PDF to the share sheet (mobile) or download it (desktop) ──
-    async _saveOrSharePdf(blob, filename) {
-        const file = new File([blob], filename, { type: 'application/pdf' });
-        const isTouch = navigator.maxTouchPoints > 1 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-        // Share the file only — passing title/text makes iOS save a stray .txt
-        if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({ files: [file] });
-                return;
-            } catch (err) {
-                if (err && err.name === 'AbortError') return; // user dismissed
-                // otherwise fall through to a download
-            }
-        }
-
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 4000);
-    },
-
-    // ── Print just the invoice (print CSS hides everything else) ──
-    _printDocument() {
-        Utils.addActivity(this._doc, 'printed', 'Sent to printer', this._doc.documentID || '');
+        Utils.addActivity(this._doc, 'exported', 'PDF export prepared', `${typeLabel} ${this._doc.documentID}`);
         db.saveDocument(this._doc);
         window.print();
     },
 
-    _exportReceipt() {
+    async _exportReceipt() {
         const paid = Utils.documentPaidTotal(this._doc, this._payments);
         const balance = Utils.documentBalance(this._doc, this._payments);
         const title = `Receipt ${this._doc.documentID}`;
@@ -740,10 +615,37 @@ const DocumentPreviewView = {
                 </table>
             </div>
         `;
-        const printWin = window.open('', '_blank', 'width=800,height=900');
-        printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title></head><body style="padding:40px;">${receiptHtml}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},300);};</script></body></html>`);
-        printWin.document.close();
         Toast.show('Preparing receipt…', 'info');
+        this._printHtmlViaFrame(receiptHtml, title);
+        Utils.addActivity(this._doc, 'exported', 'Receipt prepared', title);
+        await db.saveDocument(this._doc);
+    },
+
+    // ── Print standalone HTML through a hidden same-page iframe ──
+    // Popup-free: safe in the iOS PWA where window.open crashed.
+    _printHtmlViaFrame(html, title) {
+        document.querySelectorAll('#print-frame').forEach(f => f.remove());
+        const frame = document.createElement('iframe');
+        frame.id = 'print-frame';
+        frame.style.cssText = 'position:fixed; right:0; bottom:0; width:1px; height:1px; border:0; visibility:hidden;';
+        document.body.appendChild(frame);
+        const fdoc = frame.contentDocument || frame.contentWindow.document;
+        fdoc.open();
+        fdoc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
+            body { margin: 0; padding: 24px; }
+            @page { margin: 12mm; }
+        </style></head><body>${html}</body></html>`);
+        fdoc.close();
+        setTimeout(() => {
+            try {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            } catch (err) {
+                console.warn('Receipt print failed', err);
+                Toast.show('Could not open print dialog', 'error');
+            }
+        }, 250);
     },
 
     async _sendReminder(container) {

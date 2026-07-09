@@ -3336,8 +3336,27 @@ textarea.ios-input {
     }
     .preview-card {
         box-shadow: none;
-        padding: 0;
+        padding: 24px 0 0;
         margin: 0 auto;
         max-width: 720px;
+    }
+    /* Classic exported-document layout (matches the original print output):
+       header and meta blocks stack vertically instead of squeezing into
+       columns, with generous spacing at the top of the page. */
+    .preview-card .template-flex {
+        display: block;
+    }
+    .preview-card .template-title-row {
+        margin-bottom: 36px !important;
+    }
+    /* Keep brand-colored table headers/backgrounds in the PDF output */
+    .preview-card, .preview-card * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    /* Never split a line-item row across two pages */
+    .preview-table tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
     }
 }
