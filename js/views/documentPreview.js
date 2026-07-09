@@ -599,11 +599,13 @@ const DocumentPreviewView = {
             // Render an off-screen copy at a fixed A4-ish width so the PDF
             // looks the same regardless of the device's screen size.
             holder = document.createElement('div');
-            holder.style.cssText = 'position:fixed; left:-10000px; top:0; width:794px; background:#ffffff; padding:36px; box-sizing:border-box;';
+            holder.style.cssText = 'position:fixed; left:-10000px; top:0; width:794px; background:#ffffff; box-sizing:border-box;';
             const clone = source.cloneNode(true);
             clone.id = '';
             clone.style.width = '100%';
             clone.style.maxWidth = 'none';
+            clone.style.boxShadow = 'none';
+            clone.style.borderRadius = '0';
             holder.appendChild(clone);
             document.body.appendChild(holder);
 
@@ -615,23 +617,34 @@ const DocumentPreviewView = {
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pageW = pdf.internal.pageSize.getWidth();
             const pageH = pdf.internal.pageSize.getHeight();
-            const imgW = pageW;
-            const imgH = (canvas.height * imgW) / canvas.width;
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const margin = 10;                          // mm margin on every side
+            const contentW = pageW - margin * 2;
+            const contentH = pageH - margin * 2;
+            const pxPerMm = canvas.width / contentW;    // canvas px per mm
+            const pageSlicePx = Math.floor(contentH * pxPerMm);
 
-            // Slice the tall image across A4 pages
-            let heightLeft = imgH;
-            let position = 0;
-            pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH, undefined, 'FAST');
-            heightLeft -= pageH;
-            while (heightLeft > 0) {
-                position -= pageH;
-                pdf.addPage();
-                pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH, undefined, 'FAST');
-                heightLeft -= pageH;
+            // Slice the tall render into page-sized chunks, each drawn inside
+            // the margins, so every page has proper spacing on all four sides
+            // and the next page restarts at the top margin (no edge overflow).
+            let offset = 0;
+            let page = 0;
+            while (offset < canvas.height) {
+                const slicePx = Math.min(pageSlicePx, canvas.height - offset);
+                const slice = document.createElement('canvas');
+                slice.width = canvas.width;
+                slice.height = slicePx;
+                const ctx = slice.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, slice.width, slice.height);
+                ctx.drawImage(canvas, 0, offset, canvas.width, slicePx, 0, 0, canvas.width, slicePx);
+                const sliceHmm = slicePx / pxPerMm;
+                if (page > 0) pdf.addPage();
+                pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, contentW, sliceHmm, undefined, 'FAST');
+                offset += slicePx;
+                page++;
             }
 
-            await this._saveOrSharePdf(pdf.output('blob'), filename, title);
+            await this._saveOrSharePdf(pdf.output('blob'), filename);
 
             Utils.addActivity(this._doc, 'exported', 'PDF exported', title);
             await db.saveDocument(this._doc);
@@ -665,13 +678,14 @@ const DocumentPreviewView = {
     },
 
     // ── Hand the PDF to the share sheet (mobile) or download it (desktop) ──
-    async _saveOrSharePdf(blob, filename, title) {
+    async _saveOrSharePdf(blob, filename) {
         const file = new File([blob], filename, { type: 'application/pdf' });
         const isTouch = navigator.maxTouchPoints > 1 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+        // Share the file only — passing title/text makes iOS save a stray .txt
         if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
-                await navigator.share({ files: [file], title });
+                await navigator.share({ files: [file] });
                 return;
             } catch (err) {
                 if (err && err.name === 'AbortError') return; // user dismissed
