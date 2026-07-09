@@ -24,8 +24,8 @@ const App = {
         // Register Service Worker for offline & PWA
         this._registerServiceWorker();
 
-        // Tab bar click handlers
-        document.querySelectorAll('.tab-item').forEach(tab => {
+        // Tab bar + sidebar click handlers (both use [data-tab])
+        document.querySelectorAll('[data-tab]').forEach(tab => {
             tab.addEventListener('click', () => {
                 const view = tab.dataset.tab;
                 Utils.haptic('light');
@@ -84,10 +84,9 @@ const App = {
         navAction.style.display = 'none';
         navAction2.style.display = 'none';
 
-        // Update tab bar
-        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-        const activeTab = document.querySelector(`[data-tab="${view}"]`);
-        if (activeTab) activeTab.classList.add('active');
+        // Update tab bar + sidebar highlight (both use [data-tab])
+        document.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll(`[data-tab="${view}"]`).forEach(t => t.classList.add('active'));
 
         // Show tab bar
         document.getElementById('tab-bar').style.display = '';

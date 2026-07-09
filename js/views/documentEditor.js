@@ -364,12 +364,14 @@ const DocumentEditorView = {
                                value="${item.unitPrice || 0}"
                                data-field="unitPrice" data-index="${index}">
                     </div>
+                    ${this._currentDoc?.isTaxEnabled ? `
                     <div class="line-item-field">
                         <label>TAX %</label>
                         <input type="number" min="0" step="0.01"
                                value="${item.taxRate || 0}"
                                data-field="taxRate" data-index="${index}">
                     </div>
+                    ` : ''}
                     <div class="line-item-total" data-total-index="${index}">
                         ${Utils.formatCurrency(Utils.lineTotal(item, this._currentDoc?.isTaxEnabled))}
                     </div>
@@ -931,6 +933,11 @@ const DocumentEditorView = {
 
     // ── Refresh line items display ──
     _refreshLineItems(container) {
+        // Preserve scroll: removing all cards briefly collapses the page,
+        // which would otherwise make the browser jump to the top.
+        const scrollEl = document.getElementById('main-content');
+        const savedScroll = scrollEl ? scrollEl.scrollTop : 0;
+
         const lineContainer = container.querySelector('#line-items-container');
         const addBtn = lineContainer.querySelector('#add-line-item');
         const itemsHtml = this._renderLineItems(this._currentDoc.lineItems);
@@ -944,6 +951,8 @@ const DocumentEditorView = {
 
         // Update totals
         container.querySelector('#totals-footer').innerHTML = this._renderTotals(this._currentDoc.lineItems);
+
+        if (scrollEl) scrollEl.scrollTop = savedScroll;
     },
 
     // ── Auto-save ──

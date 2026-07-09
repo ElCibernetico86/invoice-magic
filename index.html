@@ -23,56 +23,98 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="css/styles.css?v=15">
+    <link rel="stylesheet" href="css/styles.css?v=17">
 </head>
 <body>
     <!-- App Shell -->
     <div id="app">
-        <!-- Navigation Bar (rendered per-view) -->
-        <header id="nav-bar" class="nav-bar">
-            <div class="nav-bar-inner">
-                <button id="nav-back" class="nav-btn nav-back" aria-label="Back" style="display:none;">
-                    <svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M10 2L2 10L10 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span id="nav-back-label">Back</span>
-                </button>
-                <h1 id="nav-title" class="nav-title">Invoices</h1>
-                <div class="nav-actions-group">
-                    <button id="nav-action-2" class="nav-btn nav-action-secondary" aria-label="Share" style="display:none;">
-                        <span id="nav-action-2-label"></span>
-                    </button>
-                    <button id="nav-action" class="nav-btn nav-action" aria-label="Action" style="display:none;">
-                        <span id="nav-action-label"></span>
-                    </button>
-                </div>
+        <!-- Desktop sidebar navigation (hidden on phones) -->
+        <nav id="side-nav" class="side-nav">
+            <div class="side-nav-brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--color-blue)" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <span>Invoice Magic</span>
             </div>
-        </header>
-
-        <!-- Main Content Area -->
-        <main id="main-content" class="main-content"></main>
-
-        <!-- Tab Bar -->
-        <nav id="tab-bar" class="tab-bar">
-            <button class="tab-item active" data-tab="dashboard" id="tab-dashboard">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
-                <span class="tab-label">Home</span>
-            </button>
-            <button class="tab-item" data-tab="invoices" id="tab-invoices">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                <span class="tab-label">Invoices</span>
-            </button>
-            <button class="tab-item" data-tab="estimates" id="tab-estimates">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                <span class="tab-label">Estimates</span>
-            </button>
-            <button class="tab-item" data-tab="clients" id="tab-clients">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                <span class="tab-label">Clients</span>
-            </button>
-            <button class="tab-item" data-tab="tools" id="tab-tools">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 5-7"/><path d="M7 18h10"/></svg>
-                <span class="tab-label">Tools</span>
-            </button>
+            <div class="side-nav-items">
+                <button class="sidenav-item active" data-tab="dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+                    <span>Home</span>
+                </button>
+                <button class="sidenav-item" data-tab="invoices">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    <span>Invoices</span>
+                </button>
+                <button class="sidenav-item" data-tab="estimates">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>Estimates</span>
+                </button>
+                <button class="sidenav-item" data-tab="clients">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Clients</span>
+                </button>
+                <button class="sidenav-item" data-tab="tools">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 5-7"/><path d="M7 18h10"/></svg>
+                    <span>Tools</span>
+                </button>
+            </div>
+            <div class="side-nav-footer">
+                <button class="sidenav-item" data-tab="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Settings</span>
+                </button>
+            </div>
         </nav>
+
+        <div class="app-shell">
+            <!-- Navigation Bar (rendered per-view) -->
+            <header id="nav-bar" class="nav-bar">
+                <div class="nav-bar-inner">
+                    <button id="nav-back" class="nav-btn nav-back" aria-label="Back" style="display:none;">
+                        <svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M10 2L2 10L10 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span id="nav-back-label">Back</span>
+                    </button>
+                    <h1 id="nav-title" class="nav-title">Invoices</h1>
+                    <div class="nav-actions-group">
+                        <button id="nav-action-2" class="nav-btn nav-action-secondary" aria-label="Share" style="display:none;">
+                            <span id="nav-action-2-label"></span>
+                        </button>
+                        <button id="nav-action" class="nav-btn nav-action" aria-label="Action" style="display:none;">
+                            <span id="nav-action-label"></span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main id="main-content" class="main-content"></main>
+
+            <!-- Tab Bar (phones) -->
+            <nav id="tab-bar" class="tab-bar">
+                <button class="tab-item active" data-tab="dashboard" id="tab-dashboard">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+                    <span class="tab-label">Home</span>
+                </button>
+                <button class="tab-item" data-tab="invoices" id="tab-invoices">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    <span class="tab-label">Invoices</span>
+                </button>
+                <button class="tab-item" data-tab="estimates" id="tab-estimates">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span class="tab-label">Estimates</span>
+                </button>
+                <button class="tab-item" data-tab="clients" id="tab-clients">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span class="tab-label">Clients</span>
+                </button>
+                <button class="tab-item" data-tab="tools" id="tab-tools">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 5-7"/><path d="M7 18h10"/></svg>
+                    <span class="tab-label">Tools</span>
+                </button>
+                <button class="tab-item" data-tab="settings" id="tab-settings">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span class="tab-label">Settings</span>
+                </button>
+            </nav>
+        </div>
     </div>
 
     <!-- Firebase (optional cloud backup — app works fine if these fail offline) -->
@@ -81,18 +123,18 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
     <!-- Scripts -->
-    <script src="js/firebase-config.js?v=15"></script>
-    <script src="js/db.js?v=15"></script>
-    <script src="js/toast.js?v=15"></script>
-    <script src="js/utils.js?v=15"></script>
-    <script src="js/cloudSync.js?v=15"></script>
-    <script src="js/views/dashboard.js?v=15"></script>
-    <script src="js/views/documentList.js?v=15"></script>
-    <script src="js/views/documentEditor.js?v=15"></script>
-    <script src="js/views/documentPreview.js?v=15"></script>
-    <script src="js/views/clients.js?v=15"></script>
-    <script src="js/views/tools.js?v=15"></script>
-    <script src="js/views/settings.js?v=15"></script>
-    <script src="js/app.js?v=15"></script>
+    <script src="js/firebase-config.js?v=17"></script>
+    <script src="js/db.js?v=17"></script>
+    <script src="js/toast.js?v=17"></script>
+    <script src="js/utils.js?v=17"></script>
+    <script src="js/cloudSync.js?v=17"></script>
+    <script src="js/views/dashboard.js?v=17"></script>
+    <script src="js/views/documentList.js?v=17"></script>
+    <script src="js/views/documentEditor.js?v=17"></script>
+    <script src="js/views/documentPreview.js?v=17"></script>
+    <script src="js/views/clients.js?v=17"></script>
+    <script src="js/views/tools.js?v=17"></script>
+    <script src="js/views/settings.js?v=17"></script>
+    <script src="js/app.js?v=17"></script>
 </body>
 </html>

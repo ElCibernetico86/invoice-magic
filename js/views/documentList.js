@@ -10,6 +10,7 @@ const DocumentListView = {
     _currentType: null,
     _allDocs: [],
     _searchQuery: '',
+    _swipeCloseBound: false,
 
     // ── Render the full list view ──
     async render(container, documentType) {
@@ -181,30 +182,39 @@ const DocumentListView = {
         // Swipe-to-delete touch gestures
         container.querySelectorAll('.swipe-row-wrapper').forEach(wrapper => {
             let startX = 0;
-            let currentX = 0;
+            let startY = 0;
+            let dx = 0;
             let isSwiping = false;
+            let moved = false;
             const row = wrapper.querySelector('.doc-row');
             const threshold = 60;
 
             wrapper.addEventListener('touchstart', (e) => {
                 startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                dx = 0;
+                moved = false;
                 isSwiping = true;
                 row.style.transition = 'none';
             }, { passive: true });
 
             wrapper.addEventListener('touchmove', (e) => {
                 if (!isSwiping) return;
-                currentX = e.touches[0].clientX;
-                const dx = Math.min(0, Math.max(-80, currentX - startX));
-                row.style.transform = `translateX(${dx}px)`;
+                dx = e.touches[0].clientX - startX;
+                const dy = e.touches[0].clientY - startY;
+                // Only count as a swipe once the finger actually moves
+                if (Math.abs(dx) > 8 || Math.abs(dy) > 8) moved = true;
+                const clamped = Math.min(0, Math.max(-80, dx));
+                row.style.transform = `translateX(${clamped}px)`;
             }, { passive: true });
 
             wrapper.addEventListener('touchend', () => {
                 if (!isSwiping) return;
                 isSwiping = false;
                 row.style.transition = '';
-                const dx = currentX - startX;
-                if (dx < -threshold) {
+                // A clean tap (no movement) must never register as a swipe —
+                // otherwise the click handler treats it as swiped and won't open.
+                if (moved && dx < -threshold) {
                     wrapper.classList.add('swiped');
                     row.style.transform = '';
                     Utils.haptic('medium');
@@ -235,14 +245,18 @@ const DocumentListView = {
             });
         });
 
-        // Close swiped rows when tapping elsewhere
-        document.addEventListener('touchstart', (e) => {
-            if (!e.target.closest('.swipe-row-wrapper')) {
-                container.querySelectorAll('.swipe-row-wrapper.swiped').forEach(w => {
-                    w.classList.remove('swiped');
-                });
-            }
-        }, { passive: true, once: false });
+        // Close swiped rows when tapping elsewhere.
+        // Bound once for the app lifetime (this runs on every re-render).
+        if (!DocumentListView._swipeCloseBound) {
+            DocumentListView._swipeCloseBound = true;
+            document.addEventListener('touchstart', (e) => {
+                if (!e.target.closest('.swipe-row-wrapper')) {
+                    document.querySelectorAll('.swipe-row-wrapper.swiped').forEach(w => {
+                        w.classList.remove('swiped');
+                    });
+                }
+            }, { passive: true });
+        }
     },
 
     // ── Floating Action Button ──

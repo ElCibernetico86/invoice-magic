@@ -70,7 +70,12 @@ const CloudSync = {
             this._auth = firebase.auth();
             this._fs = firebase.firestore();
             this._auth.onAuthStateChanged(user => {
+                // Only react to real account changes, not repeat/token-refresh
+                // events, so views don't re-render out from under a tap.
+                const prevUid = this._user ? this._user.uid : null;
+                const nextUid = user ? user.uid : null;
                 this._user = user;
+                if (prevUid === nextUid) return;
                 if (this.onAuthChanged) this.onAuthChanged(user);
                 if (user) this._offerRestoreIfLocalEmpty();
             });

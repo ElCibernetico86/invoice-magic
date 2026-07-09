@@ -166,7 +166,7 @@ const DocumentPreviewView = {
                 <div class="preview-logo-wrapper">
                     ${this._company.logoData
                         ? `<img src="${this._company.logoData}" alt="Logo" style="max-height: 48px; max-width: 150px; object-fit: contain;">`
-                        : (this._company.name ? `<h2 class="invoice-company-title">${Utils.escapeHtml(this._company.name)}</h2>` : '')
+                        : ''
                     }
                 </div>
                 <div style="text-align: right;">
@@ -237,7 +237,7 @@ const DocumentPreviewView = {
                     <div>
                         ${this._company.logoData
                             ? `<img src="${this._company.logoData}" alt="Logo" style="max-height: 48px; max-width: 150px; object-fit: contain; background: white; padding: 4px; border-radius: 4px;">`
-                            : (this._company.name ? `<h2 style="margin:0; font-size: 28px; letter-spacing: -1px; color: white;">${Utils.escapeHtml(this._company.name)}</h2>` : '')
+                            : ''
                         }
                     </div>
                     <div style="text-align: right; font-weight: 500; font-size: 14px; letter-spacing: 0.5px; opacity: 0.9; text-transform: uppercase;">
@@ -313,7 +313,7 @@ const DocumentPreviewView = {
                 <div class="preview-logo-wrapper" style="text-align: right;">
                     ${this._company.logoData
                         ? `<img src="${this._company.logoData}" alt="Logo" style="max-height: 48px; max-width: 150px; object-fit: contain;">`
-                        : (this._company.name ? `<h2 class="invoice-company-title invoice-company-title-large">${Utils.escapeHtml(this._company.name)}</h2>` : '')
+                        : ''
                     }
                 </div>
             </div>
