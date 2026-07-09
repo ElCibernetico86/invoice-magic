@@ -11,6 +11,7 @@ const DocumentPreviewView = {
     _company: null,
     _client: null,
     _payments: [],
+    _pdfLibsPromise: null,
 
     // ── Render the preview ──
     async render(container, docId) {
@@ -61,13 +62,12 @@ const DocumentPreviewView = {
 
                 <!-- Action Buttons -->
                 <div class="preview-actions">
-                    <button class="preview-action-btn" id="preview-print">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    <button class="preview-action-btn" id="preview-export-pdf">
                         <span>Export PDF</span>
                     </button>
-                    <button class="preview-action-btn" id="preview-share" style="display: ${navigator.share ? '' : 'none'};">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                        <span>Share</span>
+                    <button class="preview-action-btn" id="preview-print">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        <span>Print</span>
                     </button>
                     <button class="preview-action-btn secondary" id="preview-copy-pay">
                         <span>Copy Pay</span>
@@ -453,7 +453,7 @@ const DocumentPreviewView = {
     _renderPreviewActivity() {
         const activity = (this._doc.activity || []).slice(-5).reverse();
         return `
-            <div class="ios-section">
+            <div class="ios-section preview-activity-section">
                 <div class="ios-section-header">Delivery Timeline</div>
                 <div class="ios-section-content">
                     ${activity.length ? activity.map(item => `
@@ -527,18 +527,15 @@ const DocumentPreviewView = {
             });
         });
 
-        container.querySelector('#preview-print').addEventListener('click', () => {
+        container.querySelector('#preview-export-pdf').addEventListener('click', () => {
             Utils.haptic('medium');
             this._exportPDF();
         });
 
-        const shareBtn = container.querySelector('#preview-share');
-        if (shareBtn) {
-            shareBtn.addEventListener('click', async () => {
-                Utils.haptic('light');
-                await this._shareDocument();
-            });
-        }
+        container.querySelector('#preview-print').addEventListener('click', () => {
+            Utils.haptic('light');
+            this._printDocument();
+        });
 
         container.querySelector('#preview-copy-pay').addEventListener('click', async () => {
             await this._copyPaymentRequest(container);
@@ -586,48 +583,117 @@ const DocumentPreviewView = {
         this.render(container, this._doc.id);
     },
 
-    // ── Export via print ──
-    _exportPDF() {
-        const card = document.getElementById('preview-card');
+    // ── Export a real PDF file (jsPDF + html2canvas) ──
+    async _exportPDF() {
         const typeLabel = this._doc.documentType === 'invoice' ? 'Invoice' : 'Estimate';
         const title = `${typeLabel} ${this._doc.documentID}`;
+        const filename = `${title}.pdf`;
+        const source = document.getElementById('preview-card');
+        if (!source) return;
 
-        // Build a standalone print window
-        const printWin = window.open('', '_blank', 'width=800,height=1100');
-        printWin.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>${title}</title>
-                <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body {
-                        font-family: 'Inter', -apple-system, sans-serif;
-                        color: #1a1a1a;
-                        padding: 24px 32px;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    ${this._getPrintStyles()}
-                </style>
-            </head>
-            <body>
-                ${card.outerHTML}
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() { window.print(); window.close(); }, 300);
-                    };
-                </script>
-            </body>
-            </html>
-        `);
-        printWin.document.close();
+        Toast.show('Building PDF…', 'info');
+        let holder = null;
+        try {
+            await this._ensurePdfLibs();
 
-        Utils.addActivity(this._doc, 'exported', 'PDF export prepared', title);
+            // Render an off-screen copy at a fixed A4-ish width so the PDF
+            // looks the same regardless of the device's screen size.
+            holder = document.createElement('div');
+            holder.style.cssText = 'position:fixed; left:-10000px; top:0; width:794px; background:#ffffff; padding:36px; box-sizing:border-box;';
+            const clone = source.cloneNode(true);
+            clone.id = '';
+            clone.style.width = '100%';
+            clone.style.maxWidth = 'none';
+            holder.appendChild(clone);
+            document.body.appendChild(holder);
+
+            const canvas = await html2canvas(holder, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+            document.body.removeChild(holder);
+            holder = null;
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
+            const imgW = pageW;
+            const imgH = (canvas.height * imgW) / canvas.width;
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+            // Slice the tall image across A4 pages
+            let heightLeft = imgH;
+            let position = 0;
+            pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH, undefined, 'FAST');
+            heightLeft -= pageH;
+            while (heightLeft > 0) {
+                position -= pageH;
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH, undefined, 'FAST');
+                heightLeft -= pageH;
+            }
+
+            await this._saveOrSharePdf(pdf.output('blob'), filename, title);
+
+            Utils.addActivity(this._doc, 'exported', 'PDF exported', title);
+            await db.saveDocument(this._doc);
+            Toast.show('PDF ready', 'success');
+        } catch (err) {
+            console.warn('PDF export failed', err);
+            if (holder && holder.parentNode) holder.parentNode.removeChild(holder);
+            Toast.show('Could not build PDF — try Print instead', 'error');
+        }
+    },
+
+    // ── Lazy-load the PDF libraries on first use ──
+    _ensurePdfLibs() {
+        if (window.jspdf && window.html2canvas) return Promise.resolve();
+        if (this._pdfLibsPromise) return this._pdfLibsPromise;
+        const load = (src) => new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error('Failed to load ' + src));
+            document.head.appendChild(s);
+        });
+        this._pdfLibsPromise = Promise.all([
+            load('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+            load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+        ]).catch((err) => {
+            this._pdfLibsPromise = null; // allow retry
+            throw err;
+        });
+        return this._pdfLibsPromise;
+    },
+
+    // ── Hand the PDF to the share sheet (mobile) or download it (desktop) ──
+    async _saveOrSharePdf(blob, filename, title) {
+        const file = new File([blob], filename, { type: 'application/pdf' });
+        const isTouch = navigator.maxTouchPoints > 1 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title });
+                return;
+            } catch (err) {
+                if (err && err.name === 'AbortError') return; // user dismissed
+                // otherwise fall through to a download
+            }
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+    },
+
+    // ── Print just the invoice (print CSS hides everything else) ──
+    _printDocument() {
+        Utils.addActivity(this._doc, 'printed', 'Sent to printer', this._doc.documentID || '');
         db.saveDocument(this._doc);
-        Toast.show('Preparing PDF…', 'info');
+        window.print();
     },
 
     _exportReceipt() {
@@ -679,266 +745,5 @@ const DocumentPreviewView = {
             window.location.href = `mailto:${encodeURIComponent(this._client?.email || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         }
         if (container) this.render(container, this._doc.id);
-    },
-
-    // ── Share with Web Share API ──
-    async _shareDocument() {
-        const typeLabel = this._doc.documentType === 'invoice' ? 'Invoice' : 'Estimate';
-        const total = Utils.formatCurrency(Utils.docTotal(this._doc.lineItems, this._doc.isTaxEnabled, this._doc));
-        const title = `${typeLabel} ${this._doc.documentID}`;
-        const text = `${title}\nClient: ${this._doc.clientName || 'N/A'}\nTotal: ${total}\nDue: ${Utils.formatDate(this._doc.dueDate)}`;
-
-        try {
-            await navigator.share({
-                title: title,
-                text: text,
-            });
-            this._doc.status = this._doc.status === 'draft' ? 'sent' : this._doc.status;
-            this._doc.lastSentAt = new Date().toISOString();
-            Utils.addActivity(this._doc, 'shared', 'Shared from preview', title);
-            await db.saveDocument(this._doc);
-            Toast.show('Shared successfully', 'success');
-        } catch (err) {
-            if (err.name !== 'AbortError') {
-                Toast.show('Sharing failed', 'error');
-            }
-        }
-    },
-
-    // ── Print-specific styles ──
-    _getPrintStyles() {
-        return `
-            .preview-card {
-                --color-label: #1c1c1e;
-                --color-label-secondary: #5f6368;
-                --color-label-tertiary: #8a8f98;
-                max-width: 720px;
-                margin: 0 auto;
-                background: #ffffff;
-                color: #1c1c1e;
-                font-family: var(--invoice-font, 'Inter', -apple-system, sans-serif);
-            }
-            .invoice-title {
-                margin: 0;
-                color: #121317;
-                line-height: 0.95;
-                text-transform: uppercase;
-                overflow-wrap: anywhere;
-            }
-            .invoice-title-modern { font-size: 38px; font-weight: 800; }
-            .invoice-title-classic { margin-bottom: 10px; font-size: 30px; font-weight: 500; letter-spacing: 1.5px; }
-            .invoice-title-bold {
-                display: inline-block;
-                padding: 6px 14px;
-                background: #ffffff;
-                color: #101114;
-                border: 2px solid #101114;
-                font-size: 36px;
-                font-weight: 900;
-            }
-            .invoice-title-contractor { margin-top: 4px; font-size: 32px; font-weight: 900; }
-            .invoice-title-minimal { font-size: 27px; font-weight: 650; text-transform: none; }
-            .invoice-company-title { margin: 0; color: #111827; font-size: 28px; font-weight: 800; }
-            .invoice-company-title-large { font-size: 32px; }
-            .bold-title-lockup {
-                position: relative;
-                z-index: 2;
-                text-align: center;
-                margin-top: -48px;
-                margin-bottom: 22px;
-            }
-            .preview-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                gap: 20px;
-                margin-bottom: 4px;
-            }
-            .preview-company {
-                display: flex;
-                align-items: flex-start;
-                gap: 14px;
-            }
-            .preview-logo {
-                width: 56px;
-                height: 56px;
-                border-radius: 12px;
-                object-fit: cover;
-            }
-            .preview-logo-text {
-                width: 56px;
-                height: 56px;
-                border-radius: 12px;
-                background: #f0f0f5;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: 700;
-                font-size: 18px;
-                color: #666;
-            }
-            .preview-company-name {
-                font-size: 18px;
-                font-weight: 700;
-                margin-bottom: 2px;
-            }
-            .preview-company-detail {
-                font-size: 12px;
-                color: #666;
-                line-height: 1.4;
-            }
-            .preview-doc-badge {
-                text-align: right;
-            }
-            .preview-doc-type {
-                font-size: 26px;
-                font-weight: 700;
-                color: #007aff;
-                letter-spacing: -0.5px;
-            }
-            .preview-doc-number {
-                font-size: 13px;
-                color: #888;
-                font-weight: 500;
-            }
-            .preview-divider {
-                height: 1px;
-                background: #e5e5ea;
-                margin: 20px 0;
-            }
-            .preview-meta-row {
-                display: flex;
-                justify-content: space-between;
-                gap: 20px;
-            }
-            .preview-meta-block { flex: 1; }
-            .preview-meta-right {
-                text-align: right;
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-            }
-            .preview-meta-row-item {
-                display: flex;
-                justify-content: space-between;
-                gap: 16px;
-            }
-            .preview-meta-label {
-                font-size: 11px;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.04em;
-                color: #888;
-                margin-bottom: 4px;
-            }
-            .preview-meta-value {
-                font-size: 14px;
-                font-weight: 600;
-            }
-            .preview-meta-sub {
-                font-size: 12px;
-                color: #666;
-                line-height: 1.4;
-            }
-            .preview-status-badge {
-                font-size: 11px;
-                font-weight: 600;
-                padding: 2px 8px;
-                border-radius: 10px;
-                display: inline-block;
-            }
-            .preview-status-badge.draft { background: #f0f0f5; color: #888; }
-            .preview-status-badge.sent { background: #e5f1ff; color: #007aff; }
-            .preview-status-badge.paid { background: #e5f9ed; color: #34c759; }
-            .preview-status-badge.accepted { background: #f3e8fa; color: #af52de; }
-            .preview-table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 4px 0 20px;
-                font-size: 13px;
-            }
-            .preview-table thead {
-                border-bottom: 2px solid #e5e5ea;
-            }
-            .preview-table th {
-                font-size: 10px;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.04em;
-                color: #888;
-                padding: 8px 8px;
-                text-align: left;
-            }
-            .preview-th-num, .preview-td-num {
-                text-align: right !important;
-            }
-            .preview-table td {
-                padding: 10px 8px;
-                border-bottom: 1px solid #f0f0f5;
-                font-size: 13px;
-            }
-            .preview-td-desc { font-weight: 500; }
-            .preview-totals {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-end;
-                gap: 6px;
-                padding-right: 8px;
-            }
-            .preview-total-row {
-                display: flex;
-                justify-content: space-between;
-                width: 200px;
-                font-size: 13px;
-                color: #666;
-            }
-            .preview-grand-total {
-                font-size: 16px;
-                font-weight: 700;
-                color: #1a1a1a;
-                padding-top: 8px;
-                margin-top: 4px;
-                border-top: 2px solid #1a1a1a;
-            }
-            .preview-notes {
-                margin-top: 4px;
-            }
-            .preview-notes-text {
-                font-size: 13px;
-                color: #444;
-                line-height: 1.5;
-                white-space: pre-wrap;
-            }
-            .preview-footer {
-                margin-top: 40px;
-                padding-top: 16px;
-                border-top: 1px solid #e5e5ea;
-                display: flex;
-                justify-content: space-between;
-                font-size: 10px;
-                color: #aaa;
-            }
-            .preview-actions { display: none; }
-            .preview-company-info { min-width: 0; }
-
-            /* Classic Print */
-            .template-classic { font-family: Georgia, serif; }
-            .template-classic .preview-doc-type { text-transform: uppercase; color: #333; letter-spacing: 2px; }
-            .template-classic .preview-table th { border-bottom: 2px solid #333; border-top: 2px solid #333; }
-            .template-classic .preview-grand-total { border-top: 2px solid #333; border-bottom: 2px double #333; }
-            .template-classic .preview-divider { background: #ccc; }
-
-            /* Bold Print */
-            .template-bold { background: white; }
-            .template-bold .preview-header { background: #5856d6; padding: 24px; margin: -24px -20px 24px -20px; border-radius: 12px 12px 0 0; color: white; }
-            .template-bold .preview-doc-type,
-            .template-bold .preview-company-detail,
-            .template-bold .preview-doc-number,
-            .template-bold .preview-company-name,
-            .template-bold .preview-logo-text { color: white; }
-            .template-bold .preview-logo-text { background: rgba(255,255,255,0.2); }
-            .template-bold .preview-table th { background: #f0f0f5; color: #1a1a1a; }
-            .template-bold .preview-grand-total { color: #5856d6; }
-        `;
     },
 };

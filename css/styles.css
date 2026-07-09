@@ -3311,20 +3311,33 @@ textarea.ios-input {
 }
 
 /* ── Print Media Query ── */
+@page { margin: 12mm; }
+
 @media print {
     body { background: white !important; }
-    .nav-bar, .tab-bar, .fab, .toast-container,
-    .preview-actions { display: none !important; }
-    .main-content {
+    /* Hide all app chrome and the preview extras — print only the document */
+    .side-nav, .nav-bar, .tab-bar, .fab, .toast-container,
+    .preview-actions, .preview-command-card, .preview-preset-section,
+    .preview-activity-section { display: none !important; }
+    .app-shell, .main-content {
         overflow: visible !important;
         padding: 0 !important;
+        display: block !important;
     }
     #app {
         max-width: none;
         border: none;
+        display: block !important;
+    }
+    .main-content > .ios-form {
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     .preview-card {
         box-shadow: none;
         padding: 0;
+        margin: 0 auto;
+        max-width: 720px;
     }
 }
