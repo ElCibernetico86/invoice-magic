@@ -2,8 +2,9 @@
 // documentPreview.js — Professional Document Preview & Export
 // ============================================================
 // Renders a print-ready, professional invoice/estimate layout
-// with company branding. Supports PDF export via window.print()
-// and native sharing via the Web Share API.
+// with company branding. Exports a PDF by printing the isolated
+// invoice card through a hidden iframe (iOS-safe) and supports
+// native sharing via the Web Share API.
 // ============================================================
 
 const DocumentPreviewView = {
@@ -575,14 +576,85 @@ const DocumentPreviewView = {
     },
 
     // ── Export via the browser's print engine (vector-quality PDF) ──
-    // The print stylesheet isolates the document card; choose "Save as PDF"
-    // in the dialog to save, or pick a printer to print. Runs in-page — the
-    // old popup-window approach crashed the iOS PWA.
+    // Prints the invoice card inside an isolated hidden iframe rather than
+    // calling window.print() on the whole SPA. Whole-page print is a silent
+    // no-op in iOS Safari and the iOS PWA (the fixed nav/tab bars, the
+    // overflow-hidden app shell, and the tall single-page layout all trip up
+    // iOS's print engine), which made the Export button appear unresponsive.
+    // The isolated document prints reliably everywhere — same technique the
+    // receipt export already uses — and keeps vector text, fonts and colors.
+    // Choose "Save as PDF" / "Save to Files" in the dialog to save.
     _exportPDF() {
+        const card = document.querySelector('.preview-card');
+        if (!card) {
+            Toast.show('Nothing to export yet', 'error');
+            return;
+        }
         const typeLabel = this._doc.documentType === 'invoice' ? 'Invoice' : 'Estimate';
         Utils.addActivity(this._doc, 'exported', 'PDF export prepared', `${typeLabel} ${this._doc.documentID}`);
         db.saveDocument(this._doc);
-        window.print();
+        this._printCardViaFrame(card.outerHTML, `${typeLabel} ${this._doc.documentID}`);
+    },
+
+    // ── Print the invoice card through a hidden same-page iframe ──
+    // Copies the app's own stylesheets (so the card looks identical) and the
+    // live brand-color CSS variables into an isolated document, then prints
+    // just that. Popup-free and iOS-safe.
+    _printCardViaFrame(cardHtml, title) {
+        document.querySelectorAll('#print-frame').forEach(f => f.remove());
+        const frame = document.createElement('iframe');
+        frame.id = 'print-frame';
+        frame.style.cssText = 'position:fixed; right:0; bottom:0; width:1px; height:1px; border:0; opacity:0;';
+        document.body.appendChild(frame);
+
+        // Pull in every stylesheet/inline <style> from the app so the card
+        // renders with its real fonts, spacing and print rules. A <base> makes
+        // the relative stylesheet hrefs resolve inside the iframe.
+        const headStyles = [...document.querySelectorAll('link[rel="stylesheet"], style')]
+            .map(node => node.outerHTML)
+            .join('\n');
+
+        const fdoc = frame.contentDocument || frame.contentWindow.document;
+        fdoc.open();
+        fdoc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+            <base href="${location.origin}/">
+            <title>${title}</title>
+            ${headStyles}
+            <style>
+                html, body { margin: 0; padding: 0; background: #fff; }
+                body { padding: 16px; }
+                @page { margin: 12mm; }
+                * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .preview-card { box-shadow: none !important; margin: 0 auto !important; max-width: 720px; }
+            </style></head><body>${cardHtml}</body></html>`);
+        fdoc.close();
+
+        // Carry over the live brand-color CSS variables set at runtime on the
+        // app's root/body (Utils.applyAccent writes them as inline styles).
+        try {
+            fdoc.documentElement.style.cssText = document.documentElement.style.cssText;
+            if (document.body.getAttribute('style')) {
+                fdoc.body.style.cssText = document.body.style.cssText + ';margin:0;padding:16px;background:#fff;';
+            }
+        } catch { }
+
+        const doPrint = () => {
+            try {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            } catch (err) {
+                console.warn('Export print failed', err);
+                Toast.show('Could not open print dialog', 'error');
+            }
+        };
+
+        // Wait for the copied stylesheets to finish loading before printing,
+        // otherwise the first print can render unstyled.
+        if (fdoc.readyState === 'complete') {
+            setTimeout(doPrint, 350);
+        } else {
+            frame.onload = () => setTimeout(doPrint, 350);
+        }
     },
 
     async _exportReceipt() {
