@@ -633,9 +633,12 @@ const DocumentPreviewView = {
                    no way to keep only the page number, so this drops all of it
                    for a clean, professional PDF. */
                 @page { margin: 0; }
-                body { padding: 14mm; }
+                body { padding: 10mm; }
                 * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .preview-card { box-shadow: none !important; margin: 0 auto !important; max-width: 720px; }
+                /* Fill the page: drop the on-screen 720px cap so the invoice
+                   spans the full width inside the page margins, matching the
+                   fuller look of the old print output. */
+                .preview-card { box-shadow: none !important; margin: 0 auto !important; max-width: 100% !important; width: 100% !important; }
             </style></head><body>${cardHtml}</body></html>`);
         fdoc.close();
 
