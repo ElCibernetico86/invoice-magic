@@ -622,8 +622,14 @@ const DocumentPreviewView = {
             ${headStyles}
             <style>
                 html, body { margin: 0; padding: 0; background: #fff; }
-                body { padding: 16px; }
-                @page { margin: 12mm; }
+                /* margin:0 makes the browser omit its own print header/footer
+                   (page URL, date/time, page number) — there's no margin band
+                   left for it to draw them in. The document's own whitespace
+                   comes from the body padding below instead. Blink/WebKit give
+                   no way to keep only the page number, so this drops all of it
+                   for a clean, professional PDF. */
+                @page { margin: 0; }
+                body { padding: 14mm; }
                 * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .preview-card { box-shadow: none !important; margin: 0 auto !important; max-width: 720px; }
             </style></head><body>${cardHtml}</body></html>`);
