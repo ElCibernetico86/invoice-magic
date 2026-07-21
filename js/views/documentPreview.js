@@ -474,6 +474,10 @@ const DocumentPreviewView = {
         const sectionTd = 'padding: 8px 10px 5px; border-bottom: 1.5px solid var(--brand-color); background: #f7f8fa;';
         const items = this._doc.lineItems || [];
         const hasSections = items.some(i => i.type === 'section');
+        // Apple Clean (the "modern" template) uses black line-item descriptions,
+        // not the brand color the other themes use.
+        const isModern = (this._doc.templateId || 'modern') === 'modern';
+        const descColor = (hasSections || isModern) ? '#1c1c1e' : 'var(--brand-color)';
         return `
             <table class="preview-table" style="margin: 0 0 14px;">
                 <thead>
@@ -496,7 +500,7 @@ const DocumentPreviewView = {
                         return `
                         <tr>
                             <td style="${td}${hasSections ? ' padding-left: 22px;' : ''}">
-                                <span style="font-weight: ${hasSections ? '600' : '700'}; color: ${hasSections ? '#1c1c1e' : 'var(--brand-color)'}; text-transform: ${hasSections ? 'none' : 'uppercase'}; letter-spacing: 0.2px;">${Utils.escapeHtml(item.itemDescription || '—')}</span>
+                                <span style="font-weight: ${hasSections ? '600' : '700'}; color: ${descColor}; text-transform: ${hasSections ? 'none' : 'uppercase'}; letter-spacing: 0.2px;">${Utils.escapeHtml(item.itemDescription || '—')}</span>
                                 ${item.itemNote ? `<div style="color: #777; font-size: 10.5px; margin-top: 1px;">${Utils.escapeHtml(item.itemNote)}</div>` : ''}
                             </td>
                             <td style="${td} text-align: right;">${item.quantity || 0}</td>
