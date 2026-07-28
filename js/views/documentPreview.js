@@ -608,7 +608,13 @@ const DocumentPreviewView = {
         document.querySelectorAll('#print-frame').forEach(f => f.remove());
         const frame = document.createElement('iframe');
         frame.id = 'print-frame';
-        frame.style.cssText = 'position:fixed; right:0; bottom:0; width:1px; height:1px; border:0; opacity:0;';
+        // The iframe must be laid out at real page width. A 1x1 frame makes the
+        // browser lay the document out in a 1px viewport (body ~314px wide, card
+        // ~50% taller), which both squeezes the invoice into a narrow column —
+        // looking like a huge page margin — and overflows the page so the bottom
+        // half is cut off. 816px = 8.5in at 96dpi (US Letter). Kept on-screen but
+        // invisible and non-interactive so it still renders.
+        frame.style.cssText = 'position:fixed; top:0; left:0; width:816px; height:1056px; border:0; opacity:0; pointer-events:none; z-index:-1;';
         document.body.appendChild(frame);
 
         // Pull in every stylesheet/inline <style> from the app so the card
@@ -632,8 +638,11 @@ const DocumentPreviewView = {
                    comes from the body padding below instead. Blink/WebKit give
                    no way to keep only the page number, so this drops all of it
                    for a clean, professional PDF. */
-                @page { margin: 0; }
-                body { padding: 10mm; }
+                @page { size: letter; margin: 0; }
+                /* 12.7mm = 0.5in, the standard document margin used by the major
+                   invoice tools. It lives on the body (not @page) so the browser
+                   still has no margin band to draw its header/footer in. */
+                body { padding: 12.7mm; box-sizing: border-box; }
                 * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 /* Fill the page: drop the on-screen 720px cap so the invoice
                    spans the full width inside the page margins, matching the
@@ -644,20 +653,46 @@ const DocumentPreviewView = {
 
         // Carry over the live brand-color CSS variables set at runtime on the
         // app's root/body (Utils.applyAccent writes them as inline styles).
+        // NOTE: only the custom properties are copied. Copying the app body's
+        // whole cssText used to overwrite the print padding above with a hard
+        // 16px, so the export margin silently changed depending on whether the
+        // app had set an inline body style.
         try {
             fdoc.documentElement.style.cssText = document.documentElement.style.cssText;
-            if (document.body.getAttribute('style')) {
-                fdoc.body.style.cssText = document.body.style.cssText + ';margin:0;padding:16px;background:#fff;';
-            }
         } catch { }
 
         const doPrint = () => {
+            // Grow the frame to the full document height so nothing is cut off
+            // on multi-page documents.
+            try {
+                const h = fdoc.body.scrollHeight;
+                if (h > 0) frame.style.height = h + 'px';
+            } catch { }
+
+            // The save dialog names the file after the TOP-LEVEL document title,
+            // not the iframe's — so without this every export saved as
+            // "Invoice Magic" instead of the invoice/estimate number. Swap the
+            // app title for the duration of the print, then put it back.
+            const previousTitle = document.title;
+            document.title = title;
+            let restored = false;
+            const restoreTitle = () => {
+                if (restored) return;
+                restored = true;
+                document.title = previousTitle;
+                window.removeEventListener('afterprint', restoreTitle);
+            };
+            window.addEventListener('afterprint', restoreTitle);
+            // Fallback: iOS never fires afterprint reliably.
+            setTimeout(restoreTitle, 60000);
+
             try {
                 frame.contentWindow.focus();
                 frame.contentWindow.print();
             } catch (err) {
                 console.warn('Export print failed', err);
                 Toast.show('Could not open print dialog', 'error');
+                restoreTitle();
             }
         };
 
@@ -712,23 +747,46 @@ const DocumentPreviewView = {
         document.querySelectorAll('#print-frame').forEach(f => f.remove());
         const frame = document.createElement('iframe');
         frame.id = 'print-frame';
-        frame.style.cssText = 'position:fixed; right:0; bottom:0; width:1px; height:1px; border:0; visibility:hidden;';
+        // Same page-width sizing as the invoice export — a 1px frame lays the
+        // document out in a 1px viewport, squeezing and clipping the output.
+        frame.style.cssText = 'position:fixed; top:0; left:0; width:816px; height:1056px; border:0; opacity:0; pointer-events:none; z-index:-1;';
         document.body.appendChild(frame);
         const fdoc = frame.contentDocument || frame.contentWindow.document;
         fdoc.open();
         fdoc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
-            body { margin: 0; padding: 24px; }
-            @page { margin: 12mm; }
+            /* margin:0 on @page suppresses the browser's URL/date/page-number
+               band; the 0.5in document margin comes from the body padding. */
+            @page { size: letter; margin: 0; }
+            body { margin: 0; padding: 12.7mm; }
         </style></head><body>${html}</body></html>`);
         fdoc.close();
         setTimeout(() => {
+            try {
+                const h = fdoc.body.scrollHeight;
+                if (h > 0) frame.style.height = h + 'px';
+            } catch { }
+
+            // Name the saved file after the receipt, not the app (see _printCardViaFrame).
+            const previousTitle = document.title;
+            document.title = title;
+            let restored = false;
+            const restoreTitle = () => {
+                if (restored) return;
+                restored = true;
+                document.title = previousTitle;
+                window.removeEventListener('afterprint', restoreTitle);
+            };
+            window.addEventListener('afterprint', restoreTitle);
+            setTimeout(restoreTitle, 60000);
+
             try {
                 frame.contentWindow.focus();
                 frame.contentWindow.print();
             } catch (err) {
                 console.warn('Receipt print failed', err);
                 Toast.show('Could not open print dialog', 'error');
+                restoreTitle();
             }
         }, 250);
     },
