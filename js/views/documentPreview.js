@@ -631,18 +631,29 @@ const DocumentPreviewView = {
             <title>${title}</title>
             ${headStyles}
             <style>
-                html, body { margin: 0; padding: 0; background: #fff; }
-                /* margin:0 makes the browser omit its own print header/footer
-                   (page URL, date/time, page number) — there's no margin band
-                   left for it to draw them in. The document's own whitespace
-                   comes from the body padding below instead. Blink/WebKit give
-                   no way to keep only the page number, so this drops all of it
-                   for a clean, professional PDF. */
-                @page { size: letter; margin: 0; }
-                /* 12.7mm = 0.5in, the standard document margin used by the major
-                   invoice tools. It lives on the body (not @page) so the browser
-                   still has no margin band to draw its header/footer in. */
-                body { padding: 12.7mm; box-sizing: border-box; }
+                /* The app stylesheet copied in above sets html/body to
+                   height:100%; overflow:hidden for the SPA shell. Inside a print
+                   document that clips everything past the first page — this is
+                   what cut multi-page invoices in half. Must be reset here. */
+                html, body {
+                    margin: 0; padding: 0; background: #fff;
+                    height: auto !important;
+                    min-height: 0 !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                    position: static !important;
+                }
+                /* 12.7mm = 0.5in, the standard invoice margin. It MUST live on
+                   @page, not on the body: body padding applies once to the whole
+                   document, so on a multi-page invoice the page breaks got no
+                   margin at all (content ran flush to the bottom of page 1 and
+                   the top of page 2) and iOS added its own page margin on top of
+                   it, which read as a huge margin. @page applies to every page.
+                   Trade-off: this leaves the browser a margin band to draw its
+                   URL/date/page-number in — untick "Headers and footers" in the
+                   print dialog once and it stays off. */
+                @page { size: letter; margin: 12.7mm; }
+                body { padding: 0; box-sizing: border-box; }
                 * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 /* Fill the page: drop the on-screen 720px cap so the invoice
                    spans the full width inside the page margins, matching the
@@ -755,10 +766,10 @@ const DocumentPreviewView = {
         fdoc.open();
         fdoc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
-            /* margin:0 on @page suppresses the browser's URL/date/page-number
-               band; the 0.5in document margin comes from the body padding. */
-            @page { size: letter; margin: 0; }
-            body { margin: 0; padding: 12.7mm; }
+            /* 0.5in on every page — see _printCardViaFrame for why this lives on
+               @page rather than on the body. */
+            @page { size: letter; margin: 12.7mm; }
+            html, body { margin: 0; padding: 0; height: auto; overflow: visible; }
         </style></head><body>${html}</body></html>`);
         fdoc.close();
         setTimeout(() => {
