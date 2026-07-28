@@ -600,11 +600,45 @@ const DocumentPreviewView = {
         this._printCardViaFrame(card.outerHTML, `${typeLabel} ${this._doc.documentID}`);
     },
 
+    // ── Name the exported file ──
+    // The save dialog names the PDF after the top-level document title, not the
+    // print iframe's, so this has to be swapped on the app document itself.
+    // Installed as a standalone PWA, iOS appears to prefer the web-app name over
+    // document.title, so the apple-mobile-web-app-title meta is swapped too and
+    // the swap happens as early as possible (when Export is tapped, not right
+    // before print) in case iOS reads the name before the print sheet builds.
+    // Returns a restore function; it is also wired to afterprint + a timeout,
+    // since iOS does not fire afterprint reliably.
+    _applyExportName(name) {
+        const previousTitle = document.title;
+        const meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        const previousMeta = meta ? meta.getAttribute('content') : null;
+
+        document.title = name;
+        if (meta) meta.setAttribute('content', name);
+
+        let restored = false;
+        const restore = () => {
+            if (restored) return;
+            restored = true;
+            document.title = previousTitle;
+            if (meta && previousMeta !== null) meta.setAttribute('content', previousMeta);
+            window.removeEventListener('afterprint', restore);
+        };
+        window.addEventListener('afterprint', restore);
+        setTimeout(restore, 60000);
+        return restore;
+    },
+
     // ── Print the invoice card through a hidden same-page iframe ──
     // Copies the app's own stylesheets (so the card looks identical) and the
     // live brand-color CSS variables into an isolated document, then prints
     // just that. Popup-free and iOS-safe.
     _printCardViaFrame(cardHtml, title) {
+        // Applied up front, not in doPrint, to give iOS as much time as possible
+        // to pick the name up before it builds the print/share sheet.
+        const restoreExportName = this._applyExportName(title);
+
         document.querySelectorAll('#print-frame').forEach(f => f.remove());
         const frame = document.createElement('iframe');
         frame.id = 'print-frame';
@@ -680,30 +714,13 @@ const DocumentPreviewView = {
                 if (h > 0) frame.style.height = h + 'px';
             } catch { }
 
-            // The save dialog names the file after the TOP-LEVEL document title,
-            // not the iframe's — so without this every export saved as
-            // "Invoice Magic" instead of the invoice/estimate number. Swap the
-            // app title for the duration of the print, then put it back.
-            const previousTitle = document.title;
-            document.title = title;
-            let restored = false;
-            const restoreTitle = () => {
-                if (restored) return;
-                restored = true;
-                document.title = previousTitle;
-                window.removeEventListener('afterprint', restoreTitle);
-            };
-            window.addEventListener('afterprint', restoreTitle);
-            // Fallback: iOS never fires afterprint reliably.
-            setTimeout(restoreTitle, 60000);
-
             try {
                 frame.contentWindow.focus();
                 frame.contentWindow.print();
             } catch (err) {
                 console.warn('Export print failed', err);
                 Toast.show('Could not open print dialog', 'error');
-                restoreTitle();
+                restoreExportName();
             }
         };
 
@@ -755,6 +772,8 @@ const DocumentPreviewView = {
     // ── Print standalone HTML through a hidden same-page iframe ──
     // Popup-free: safe in the iOS PWA where window.open crashed.
     _printHtmlViaFrame(html, title) {
+        const restoreExportName = this._applyExportName(title);
+
         document.querySelectorAll('#print-frame').forEach(f => f.remove());
         const frame = document.createElement('iframe');
         frame.id = 'print-frame';
@@ -778,26 +797,13 @@ const DocumentPreviewView = {
                 if (h > 0) frame.style.height = h + 'px';
             } catch { }
 
-            // Name the saved file after the receipt, not the app (see _printCardViaFrame).
-            const previousTitle = document.title;
-            document.title = title;
-            let restored = false;
-            const restoreTitle = () => {
-                if (restored) return;
-                restored = true;
-                document.title = previousTitle;
-                window.removeEventListener('afterprint', restoreTitle);
-            };
-            window.addEventListener('afterprint', restoreTitle);
-            setTimeout(restoreTitle, 60000);
-
             try {
                 frame.contentWindow.focus();
                 frame.contentWindow.print();
             } catch (err) {
                 console.warn('Receipt print failed', err);
                 Toast.show('Could not open print dialog', 'error');
-                restoreTitle();
+                restoreExportName();
             }
         }, 250);
     },
