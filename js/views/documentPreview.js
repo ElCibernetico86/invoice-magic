@@ -202,6 +202,7 @@ const DocumentPreviewView = {
                         <span>SUBTOTAL:</span>
                         <span>${Utils.formatCurrency(Utils.docSubtotal(this._doc.lineItems))}</span>
                     </div>
+                    ${this._renderDiscountRow('display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600;')}
                     ${this._doc.isTaxEnabled ? `
                     <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-weight: 600;">
                         <span>TAX:</span>
@@ -212,6 +213,9 @@ const DocumentPreviewView = {
                         <span>TOTAL</span>
                         <span>${Utils.formatCurrency(Utils.docTotal(this._doc.lineItems, this._doc.isTaxEnabled, this._doc))}</span>
                     </div>
+                    ${this._renderBalanceRows(
+                        'display: flex; justify-content: space-between; margin-top: 8px; font-weight: 600;',
+                        'border-top: 2.5px solid var(--brand-color); margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 700; font-size: 17px;')}
                 </div>
             </div>
 
@@ -281,6 +285,7 @@ const DocumentPreviewView = {
                         <span>SUBTOTAL:</span>
                         <span>${Utils.formatCurrency(Utils.docSubtotal(this._doc.lineItems))}</span>
                     </div>
+                    ${this._renderDiscountRow('display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 700; padding: 0 16px;')}
                     ${this._doc.isTaxEnabled ? `
                     <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-weight: 700; padding: 0 16px;">
                         <span>TAX:</span>
@@ -291,6 +296,9 @@ const DocumentPreviewView = {
                         <span>TOTAL</span>
                         <span>${Utils.formatCurrency(Utils.docTotal(this._doc.lineItems, this._doc.isTaxEnabled, this._doc))}</span>
                     </div>
+                    ${this._renderBalanceRows(
+                        'display: flex; justify-content: space-between; margin-top: 8px; font-weight: 700; padding: 0 16px;',
+                        'background: var(--brand-color); color: white; padding: 9px 16px; margin-top: 8px; display: flex; justify-content: space-between; font-weight: 700; font-size: 17px;')}
                 </div>
             </div>
 
@@ -349,6 +357,7 @@ const DocumentPreviewView = {
                         <span>SUBTOTAL:</span>
                         <span>${Utils.formatCurrency(Utils.docSubtotal(this._doc.lineItems))}</span>
                     </div>
+                    ${this._renderDiscountRow('display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 500; font-size: 13px; letter-spacing: 0.5px; padding: 0 16px;')}
                     ${this._doc.isTaxEnabled ? `
                     <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-weight: 500; font-size: 13px; letter-spacing: 0.5px; padding: 0 16px;">
                         <span>TAX:</span>
@@ -359,6 +368,9 @@ const DocumentPreviewView = {
                         <span>TOTAL</span>
                         <span>${Utils.formatCurrency(Utils.docTotal(this._doc.lineItems, this._doc.isTaxEnabled, this._doc))}</span>
                     </div>
+                    ${this._renderBalanceRows(
+                        'display: flex; justify-content: space-between; margin-top: 8px; font-weight: 500; font-size: 13px; letter-spacing: 0.5px; padding: 0 16px;',
+                        'background: var(--brand-color); color: white; padding: 10px 16px; margin-top: 8px; display: flex; justify-content: space-between; font-weight: 700; font-size: 18px; letter-spacing: -0.5px;')}
                 </div>
             </div>
 
@@ -413,6 +425,31 @@ const DocumentPreviewView = {
             ${this._renderTotalsBlock()}
             ${this._renderNotesBlock()}
         `;
+    },
+
+    /* Rows that belong in EVERY template's totals footer but were only present in
+       the shared _renderTotalsBlock() — so classic, bold, modern and studio silently
+       exported the full TOTAL even when the invoice was part-paid or discounted.
+       `rowStyle` lets each template match its own type treatment. */
+    _renderDiscountRow(rowStyle) {
+        const discount = Utils.docDiscount(this._doc);
+        if (!(discount > 0)) return '';
+        return `<div style="${rowStyle}"><span>DISCOUNT:</span><span>-${Utils.formatCurrency(discount)}</span></div>`;
+    },
+
+    _renderBalanceRows(rowStyle, balanceStyle) {
+        const deposit = Utils.docDeposit(this._doc);
+        const paid    = Utils.documentPaidTotal(this._doc, this._payments);
+        const balance = Utils.documentBalance(this._doc, this._payments);
+        let html = '';
+        if (deposit > 0) {
+            html += `<div style="${rowStyle}"><span>DEPOSIT DUE:</span><span>${Utils.formatCurrency(deposit)}</span></div>`;
+        }
+        if (paid > 0) {
+            html += `<div style="${rowStyle}"><span>PAID:</span><span>-${Utils.formatCurrency(paid)}</span></div>`;
+            html += `<div style="${balanceStyle}"><span>BALANCE DUE</span><span>${Utils.formatCurrency(balance)}</span></div>`;
+        }
+        return html;
     },
 
     _renderTotalsBlock() {
