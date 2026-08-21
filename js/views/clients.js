@@ -156,11 +156,27 @@ const ClientsView = {
             <div class="modal-actions">
                 <button class="modal-action-btn modal-action-primary" id="client-new-invoice">New Invoice</button>
                 <button class="modal-action-btn" id="client-edit">Edit Client</button>
+                <button class="modal-action-btn modal-action-destructive" id="client-delete">Delete Client</button>
                 <button class="modal-action-btn modal-action-cancel" id="client-close">Close</button>
             </div>
         `);
 
         overlay.querySelector('#client-close').addEventListener('click', () => overlay.remove());
+
+        overlay.querySelector('#client-delete').addEventListener('click', async () => {
+            // Documents keep their own clientName, so history still reads correctly
+            // after the contact is gone — but say so rather than let it surprise.
+            const warn = docs.length
+                ? `\n\n${docs.length} document${docs.length === 1 ? '' : 's'} reference${docs.length === 1 ? 's' : ''} this client. ` +
+                  `They will be kept and still show the name, but will no longer be linked to a contact.`
+                : '';
+            if (!confirm(`Delete "${client.name || 'this client'}"?${warn}\n\nThis cannot be undone.`)) return;
+            await db.deleteClient(client.id);
+            Utils.haptic('success');
+            Toast.show('Client deleted', 'success');
+            overlay.remove();
+            this.render(container);
+        });
         overlay.querySelector('#client-edit').addEventListener('click', () => {
             overlay.remove();
             this._showClientEditor(container, client);
@@ -186,7 +202,7 @@ const ClientsView = {
                 <label>Name<input id="client-name" value="${Utils.escapeHtml(current.name || '')}" placeholder="Client name"></label>
                 <label>Email<input id="client-email" value="${Utils.escapeHtml(current.email || '')}" placeholder="client@email.com"></label>
                 <label>Phone<input id="client-phone" value="${Utils.escapeHtml(current.phone || '')}" placeholder="+1 (555) 000-0000"></label>
-                <label>Address<textarea id="client-address" rows="2" placeholder="Street, City, State">${Utils.escapeHtml(current.address || '')}</textarea></label>
+                <label>Address<textarea id="client-address" rows="2" placeholder="Street&#10;City, ST 12345">${Utils.escapeHtml(current.address || '')}</textarea></label>
                 <label>Default Preset
                     <select id="client-default-preset">
                         ${Utils.brandPresets.map(preset => `<option value="${preset.id}" ${preset.id === (current.defaultPresetId || 'apple-clean') ? 'selected' : ''}>${preset.name}</option>`).join('')}

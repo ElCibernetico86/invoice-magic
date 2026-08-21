@@ -555,6 +555,31 @@ const Utils = {
         return div.innerHTML;
     },
 
+    /* Addresses print on two lines — street, then city/state/ZIP. That's the
+       convention on invoices, and a single run-on line reads like a data field
+       rather than a mailing address.
+
+       Line breaks the user typed always win. Older records were captured in a
+       single-line input, so those get split on the trailing "City, ST 12345"
+       pattern rather than forcing everyone to retype them. Anything that
+       doesn't match is returned untouched — never mangle an address to make it
+       fit a guess. */
+    formatAddressHtml(address) {
+        const raw = String(address == null ? '' : address).trim();
+        if (!raw) return '';
+
+        const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (lines.length > 1) return lines.map(l => this.escapeHtml(l)).join('<br>');
+
+        // "<street> <city>, <ST> <zip>"  →  street / city, ST zip
+        const m = raw.match(/^(.*\S)\s+([A-Za-z][A-Za-z .'\-]*,\s*[A-Za-z]{2}\.?\s+\d{5}(?:-\d{4})?)\s*$/);
+        if (m && m[1].length > 2) {
+            const street = m[1].replace(/,\s*$/, '');            // "…Dr," → "…Dr"
+            return this.escapeHtml(street) + '<br>' + this.escapeHtml(m[2].replace(/\s{2,}/g, ' '));
+        }
+        return this.escapeHtml(raw);
+    },
+
     // ── Haptic Feedback ──
     haptic(type = 'light') {
         if ('vibrate' in navigator) {

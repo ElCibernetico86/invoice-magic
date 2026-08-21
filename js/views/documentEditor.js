@@ -111,10 +111,9 @@ const DocumentEditorView = {
                             </div>
                             <div class="ios-cell">
                                 <span class="ios-input-label">Address</span>
-                                <input type="text" class="ios-input" id="editor-client-address"
-                                       placeholder="Street, City, State"
-                                       value="${Utils.escapeHtml(this._getClientField('address'))}"
-                                       autocomplete="off">
+                                <textarea class="ios-input" id="editor-client-address" rows="2"
+                                       placeholder="Street&#10;City, ST 12345"
+                                       autocomplete="off">${Utils.escapeHtml(this._getClientField('address'))}</textarea>
                             </div>
                         </div>
                     </div>
@@ -515,6 +514,22 @@ const DocumentEditorView = {
         const suggestionsEl = container.querySelector('#client-suggestions');
         const clientDetailsEl = container.querySelector('#client-details');
 
+        /* Picking a suggestion blurs the input first, and the blur handler below
+           creates a client from whatever is typed. That raced: tapping "Adaptive
+           Renovations" after typing "Adap" saved a NEW client called "Adap" and
+           then selected the real one — which is where the stray "Ad"/"Adap"/
+           "Adapt"/"bu" records came from.
+
+           preventDefault on pointerdown keeps focus on the input so blur never
+           fires, and the flag is a fallback for browsers that blur anyway. */
+        let pickingSuggestion = false;
+        suggestionsEl.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('.client-suggestion')) {
+                pickingSuggestion = true;
+                e.preventDefault();
+            }
+        });
+
         clientInput.addEventListener('input', Utils.debounce(() => {
             const query = clientInput.value.trim().toLowerCase();
             if (!query) {
@@ -537,6 +552,7 @@ const DocumentEditorView = {
 
                 suggestionsEl.querySelectorAll('.client-suggestion').forEach(btn => {
                     btn.addEventListener('click', async () => {
+                        pickingSuggestion = false;
                         const clientId = parseInt(btn.dataset.clientId, 10);
                         const client = self._allClients.find(c => c.id === clientId);
                         if (client) {
@@ -564,6 +580,9 @@ const DocumentEditorView = {
 
         // When client name loses focus, auto-create if new
         clientInput.addEventListener('blur', async () => {
+            // A suggestion is being tapped — its click handler owns this, and
+            // creating a client from the half-typed search text would be wrong.
+            if (pickingSuggestion) { pickingSuggestion = false; return; }
             const name = clientInput.value.trim();
             if (name && !self._currentDoc.clientId) {
                 const client = await db.findOrCreateClient(name);
@@ -871,46 +890,59 @@ const DocumentEditorView = {
                 const cards = () => [...lineContainer.querySelectorAll('.line-item-card')];
 
                 card.classList.add('dragging');
-                try { handle.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
                 Utils.haptic('light');
 
                 let lastY = e.clientY;
                 let raf = null;
 
-                // Move the card in the DOM to follow the pointer
+                /* Listen on the document, NOT the handle. reorderAt() moves the
+                   card with insertBefore, which detaches and reattaches the
+                   handle inside it — that silently drops pointer capture, so
+                   pointermove stopped firing and lastY froze. The only thing
+                   still running was the scroll loop reading a stale lastY,
+                   which is why items appeared to move only while scrolling. */
                 const reorderAt = (y) => {
-                    for (const other of cards()) {
-                        if (other === card) continue;
-                        const rect = other.getBoundingClientRect();
-                        if (y > rect.top && y < rect.bottom) {
-                            if (y < rect.top + rect.height / 2) {
-                                lineContainer.insertBefore(card, other);
-                            } else {
-                                lineContainer.insertBefore(card, other.nextSibling);
-                            }
-                            break;
+                    const others = cards().filter(c => c !== card);
+                    if (!others.length) return;
+                    // First card whose midpoint is below the pointer wins.
+                    const before = others.find(o => {
+                        const r = o.getBoundingClientRect();
+                        return y < r.top + r.height / 2;
+                    });
+                    if (before) {
+                        if (card.nextElementSibling !== before) lineContainer.insertBefore(card, before);
+                    } else {
+                        const last = others[others.length - 1];
+                        if (last && last.nextElementSibling !== card) {
+                            lineContainer.insertBefore(card, last.nextElementSibling);
                         }
                     }
                 };
 
-                // Auto-scroll while holding near the screen edges
+                // Auto-scroll near the edges. The app scrolls #main-content, not
+                // the window — window.scrollBy() here did nothing.
+                const scroller = document.getElementById('main-content') || document.scrollingElement;
                 const scrollLoop = () => {
-                    if (lastY < 110) window.scrollBy(0, -10);
-                    else if (lastY > window.innerHeight - 110) window.scrollBy(0, 10);
+                    const box = scroller === document.scrollingElement
+                        ? { top: 0, bottom: window.innerHeight }
+                        : scroller.getBoundingClientRect();
+                    if (lastY < box.top + 90) scroller.scrollTop -= 12;
+                    else if (lastY > box.bottom - 90) scroller.scrollTop += 12;
                     reorderAt(lastY);
                     raf = requestAnimationFrame(scrollLoop);
                 };
                 raf = requestAnimationFrame(scrollLoop);
 
                 const move = (ev) => {
+                    ev.preventDefault();          // stop mobile from scrolling instead
                     lastY = ev.clientY;
                     reorderAt(lastY);
                 };
 
                 const finish = () => {
-                    handle.removeEventListener('pointermove', move);
-                    handle.removeEventListener('pointerup', finish);
-                    handle.removeEventListener('pointercancel', finish);
+                    document.removeEventListener('pointermove', move);
+                    document.removeEventListener('pointerup', finish);
+                    document.removeEventListener('pointercancel', finish);
                     cancelAnimationFrame(raf);
                     card.classList.remove('dragging');
 
@@ -925,9 +957,9 @@ const DocumentEditorView = {
                     self._refreshLineItems(container);
                 };
 
-                handle.addEventListener('pointermove', move);
-                handle.addEventListener('pointerup', finish);
-                handle.addEventListener('pointercancel', finish);
+                document.addEventListener('pointermove', move, { passive: false });
+                document.addEventListener('pointerup', finish);
+                document.addEventListener('pointercancel', finish);
             });
         });
     },

@@ -1378,6 +1378,11 @@ textarea.ios-input {
     color: var(--color-label);
 }
 
+.modal-action-destructive {
+    background: var(--color-fill-secondary);
+    color: var(--color-red, #ff3b30);
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
