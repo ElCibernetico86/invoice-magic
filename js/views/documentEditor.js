@@ -1312,8 +1312,20 @@ const DocumentEditorView = {
 
         overlay.querySelector('#modal-delete').addEventListener('click', async () => {
             overlay.remove();
-            const label = this._currentDoc.documentType === 'invoice' ? 'Invoice' : 'Estimate';
-            await db.deleteDocument(this._currentDoc.id);
+            const doc = this._currentDoc;
+            if (!doc) return;
+            const label = doc.documentType === 'invoice' ? 'Invoice' : 'Estimate';
+
+            /* Drop the working copy BEFORE deleting. Every navigation path calls
+               saveNow(), which writes _currentDoc back with its original id — so
+               deleting and then navigating away re-created the document instantly.
+               Clearing it (and the pending debounce) makes saveNow() and
+               _autoSave() no-ops for a document that no longer exists. */
+            clearTimeout(this._autoSaveTimeout);
+            this._autoSaveTimeout = null;
+            this._currentDoc = null;
+
+            await db.deleteDocument(doc.id);
             Utils.haptic('success');
             Toast.show(`${label} deleted`, 'success');
             App.navigateBack();
