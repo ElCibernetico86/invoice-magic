@@ -61,7 +61,10 @@ const ClientsView = {
         const content = container.querySelector('#clients-content');
         const clients = this._clients.filter(client => {
             if (!this._searchQuery) return true;
-            return [client.name, client.email, client.phone, client.address].join(' ').toLowerCase().includes(this._searchQuery);
+            // Searching a street name has to find the contractor who works there.
+            const props = Utils.clientAddresses(client).map(p => `${p.label} ${p.address}`).join(' ');
+            return [client.name, client.email, client.phone, client.address, props]
+                .join(' ').toLowerCase().includes(this._searchQuery);
         });
 
         if (!clients.length) {
@@ -131,7 +134,11 @@ const ClientsView = {
                     <div class="client-detail-name">${Utils.escapeHtml(client.name || 'Unnamed Client')}</div>
                     <div class="client-detail-meta">${Utils.escapeHtml(client.email || 'No email')}</div>
                     <div class="client-detail-meta">${Utils.escapeHtml(client.phone || 'No phone')}</div>
-                    <div class="client-detail-meta">${Utils.escapeHtml(client.address || 'No address')}</div>
+                    ${(() => {
+                        const props = Utils.clientAddresses(client);
+                        if (!props.length) return '<div class="client-detail-meta">No properties</div>';
+                        return props.map(p => `<div class="client-detail-meta">${Utils.escapeHtml(Utils.addressSummary(p))}</div>`).join('');
+                    })()}
                     <div class="client-detail-meta">Preset: ${Utils.escapeHtml(Utils.getBrandPreset(client.defaultPresetId || 'apple-clean').name)}</div>
                 </div>
             </div>
@@ -202,7 +209,15 @@ const ClientsView = {
                 <label>Name<input id="client-name" value="${Utils.escapeHtml(current.name || '')}" placeholder="Client name"></label>
                 <label>Email<input id="client-email" value="${Utils.escapeHtml(current.email || '')}" placeholder="client@email.com"></label>
                 <label>Phone<input id="client-phone" value="${Utils.escapeHtml(current.phone || '')}" placeholder="+1 (555) 000-0000"></label>
-                <label>Address<textarea id="client-address" rows="2" placeholder="Street&#10;City, ST 12345">${Utils.escapeHtml(current.address || '')}</textarea></label>
+                <div class="address-field">
+                    <span class="address-field-label">Properties</span>
+                    <div id="client-address-list"></div>
+                    <button type="button" class="address-add" id="client-add-address">+ Add property</button>
+                    <span class="address-field-hint">
+                        Contractors run several houses at once. Each estimate and invoice picks one and
+                        keeps its own copy, so editing a property here never changes work already billed.
+                    </span>
+                </div>
                 <label>Default Preset
                     <select id="client-default-preset">
                         ${Utils.brandPresets.map(preset => `<option value="${preset.id}" ${preset.id === (current.defaultPresetId || 'apple-clean') ? 'selected' : ''}>${preset.name}</option>`).join('')}
@@ -219,6 +234,52 @@ const ClientsView = {
             </div>
         `);
 
+        /* Working copy of the property list, written only when Save is tapped.
+           A pre-list client's single address is materialised with a real id the
+           first time it is edited here. */
+        let addresses = Utils.clientAddresses(current).map(a => ({
+            id: a.id === 'legacy' ? Utils.newAddressId() : a.id,
+            label: a.label || '',
+            address: a.address || '',
+        }));
+
+        const listEl = overlay.querySelector('#client-address-list');
+        const renderAddresses = () => {
+            listEl.innerHTML = addresses.length ? addresses.map((entry, i) => `
+                <div class="address-row" data-index="${i}">
+                    <div class="address-row-main">
+                        <input class="address-label" placeholder="Name it — “Willow reno” (optional)"
+                               value="${Utils.escapeHtml(entry.label)}">
+                        <textarea class="address-text" rows="2"
+                                  placeholder="Street&#10;City, ST 12345">${Utils.escapeHtml(entry.address)}</textarea>
+                    </div>
+                    <button type="button" class="address-remove" title="Remove property">✕</button>
+                </div>
+            `).join('') : '<div class="empty-inline">No properties yet.</div>';
+
+            /* Only add/remove redraws — the text handlers just update the array,
+               because re-rendering on input would steal focus mid-word. */
+            listEl.querySelectorAll('.address-row').forEach(row => {
+                const i = Number(row.dataset.index);
+                row.querySelector('.address-label')
+                    .addEventListener('input', (e) => { addresses[i].label = e.target.value; });
+                row.querySelector('.address-text')
+                    .addEventListener('input', (e) => { addresses[i].address = e.target.value; });
+                row.querySelector('.address-remove').addEventListener('click', () => {
+                    addresses.splice(i, 1);
+                    renderAddresses();
+                });
+            });
+        };
+        renderAddresses();
+
+        overlay.querySelector('#client-add-address').addEventListener('click', () => {
+            addresses.push({ id: Utils.newAddressId(), label: '', address: '' });
+            renderAddresses();
+            const last = listEl.querySelector('.address-row:last-child .address-text');
+            if (last) last.focus();
+        });
+
         overlay.querySelector('#cancel-client').addEventListener('click', () => overlay.remove());
         overlay.querySelector('#save-client').addEventListener('click', async () => {
             const name = overlay.querySelector('#client-name').value.trim();
@@ -231,7 +292,14 @@ const ClientsView = {
                 name,
                 email: overlay.querySelector('#client-email').value.trim(),
                 phone: overlay.querySelector('#client-phone').value.trim(),
-                address: overlay.querySelector('#client-address').value.trim(),
+                /* `address` is intentionally NOT written — it is carried
+                   forward untouched by the spread above. Documents written
+                   before job sites existed fall back to it, and because
+                   nothing updates it any more, those documents stay frozen at
+                   what they have always displayed. */
+                addresses: addresses
+                    .map(a => ({ ...a, label: a.label.trim(), address: a.address.trim() }))
+                    .filter(a => a.address),
                 defaultPresetId: overlay.querySelector('#client-default-preset').value,
                 defaultTaxRate: overlay.querySelector('#client-default-tax').value.trim(),
                 paymentUrl: overlay.querySelector('#client-payment-url').value.trim(),

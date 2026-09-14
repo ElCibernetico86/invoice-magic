@@ -30,6 +30,9 @@ const DocumentEditorView = {
         this._payments = doc.documentType === 'invoice' ? await db.getPaymentsForDocument(doc.id) : [];
         this._catalog = await db.getCatalogItems();
         this._company = await db.getCompanyProfile();
+        // Before ensureDocumentDefaults, which fills the key in — its absence is
+        // what marks a document written before job sites existed.
+        this._adoptSiteAddress(doc);
         Utils.ensureDocumentDefaults(doc, this._company);
 
         const typeLabel = doc.documentType === 'invoice' ? 'Invoice' : 'Estimate';
@@ -109,13 +112,26 @@ const DocumentEditorView = {
                                        value="${Utils.escapeHtml(this._getClientField('phone'))}"
                                        autocomplete="off">
                             </div>
+                            <div class="ios-cell" id="site-picker-cell" ${this._siteAddresses().length ? '' : 'style="display:none;"'}>
+                                <span class="ios-input-label">Job site</span>
+                                <select class="ios-input" id="editor-site-picker">${this._siteOptionsHtml()}</select>
+                            </div>
                             <div class="ios-cell">
                                 <span class="ios-input-label">Address</span>
-                                <textarea class="ios-input" id="editor-client-address" rows="2"
+                                <textarea class="ios-input" id="editor-site-address" rows="2"
                                        placeholder="Street&#10;City, ST 12345"
-                                       autocomplete="off">${Utils.escapeHtml(this._getClientField('address'))}</textarea>
+                                       autocomplete="off">${Utils.escapeHtml(doc.siteAddress || '')}</textarea>
+                            </div>
+                            <div class="ios-cell" id="site-save-cell" style="display:none;">
+                                <span class="ios-input-label">New address</span>
+                                <button type="button" class="ios-btn ios-btn-text" id="editor-site-save"
+                                        style="width:auto; padding:0; min-height:0;">Save to client</button>
                             </div>
                         </div>
+                    </div>
+                    <div class="ios-section-footer" id="site-hint" ${doc.clientId ? '' : 'style="display:none;"'}>
+                        The job site belongs to this ${typeLabel.toLowerCase()}. Changing it here never
+                        touches documents you already sent.
                     </div>
                 </div>
 
@@ -328,6 +344,112 @@ const DocumentEditorView = {
         if (!this._currentDoc || !this._currentDoc.clientId) return '';
         const client = this._allClients.find(c => c.id === this._currentDoc.clientId);
         return client ? (client[field] || '') : '';
+    },
+
+    /**
+     * Give a document its own copy of the job site, once.
+     *
+     * Two jobs, both only when the document has no address of its own:
+     *
+     *   - A document written before job sites existed inherits whatever it is
+     *     currently displaying. That FREEZES it at today's value, which is the
+     *     migration — from here on, editing the client cannot rewrite it.
+     *   - A new document on a client with exactly ONE property picks it up, so
+     *     the common case still takes no taps. With several properties it stays
+     *     blank on purpose: guessing is the bug Alex reported.
+     *
+     * Not saved here. `saveNow()` runs on every navigation out of the editor,
+     * so the copy persists without an extra write on open.
+     */
+    _adoptSiteAddress(doc) {
+        if (!doc || String(doc.siteAddress || '').trim()) return;
+
+        const client = doc.clientId ? this._allClients.find(c => c.id === doc.clientId) : null;
+        if (!client) return;
+
+        // No such key at all → written before job sites existed. Inherit exactly
+        // what it is displaying today, whatever the client's list looks like now.
+        const predatesFeature = !('siteAddress' in doc);
+        const legacy = String(client.address || '').trim();
+        if (predatesFeature && legacy) {
+            doc.siteAddress = legacy;
+            const match = Utils.clientAddresses(client)
+                .find(a => a.address.replace(/\s+/g, ' ').trim() === legacy.replace(/\s+/g, ' ').trim());
+            doc.siteAddressId = match && match.id !== 'legacy' ? match.id : '';
+            return;
+        }
+
+        const saved = Utils.clientAddresses(client);
+        if (saved.length === 1) {
+            doc.siteAddress = saved[0].address;
+            doc.siteAddressId = saved[0].id === 'legacy' ? '' : saved[0].id;
+        }
+    },
+
+    _getClient() {
+        if (!this._currentDoc || !this._currentDoc.clientId) return null;
+        return this._allClients.find(c => c.id === this._currentDoc.clientId) || null;
+    },
+
+    /** A saved property whose text matches, ignoring spacing and case. */
+    _matchSavedAddress(text) {
+        const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        const target = norm(text);
+        if (!target) return null;
+        return this._siteAddresses().find(a => norm(a.address) === target) || null;
+    },
+
+    /** Redraw the job-site controls after the client or the saved list changes. */
+    _refreshSiteFields(container) {
+        const doc = this._currentDoc;
+        const picker = container.querySelector('#editor-site-picker');
+        const text = container.querySelector('#editor-site-address');
+        const pickerCell = container.querySelector('#site-picker-cell');
+        const hint = container.querySelector('#site-hint');
+        if (!doc || !picker || !text) return;
+
+        if (pickerCell) pickerCell.style.display = this._siteAddresses().length ? '' : 'none';
+        picker.innerHTML = this._siteOptionsHtml();
+        text.value = doc.siteAddress || '';
+        if (hint) hint.style.display = doc.clientId ? '' : 'none';
+        this._refreshSiteSaveButton(container);
+    },
+
+    /** "Save to client" appears only for a typed address that isn't saved yet. */
+    _refreshSiteSaveButton(container) {
+        const cell = container.querySelector('#site-save-cell');
+        if (!cell || !this._currentDoc) return;
+        const typed = String(this._currentDoc.siteAddress || '').trim();
+        const unsaved = typed && !this._matchSavedAddress(typed);
+        cell.style.display = this._currentDoc.clientId && unsaved ? '' : 'none';
+    },
+
+    /** The properties saved against the selected client. */
+    _siteAddresses() {
+        return Utils.clientAddresses(this._getClient());
+    },
+
+    /* Options for the job-site picker. "Custom address…" is always last and is
+       what a typed-in address selects — a document is never forced to use a
+       saved property, because Alex quotes one-off jobs too. */
+    _siteOptionsHtml() {
+        const doc = this._currentDoc || {};
+        const saved = this._siteAddresses();
+        const matched = saved.some(a => a.id === doc.siteAddressId);
+        const typed = String(doc.siteAddress || '').trim();
+
+        // Exactly one option carries `selected`, or the browser takes the last.
+        const chosen = matched ? doc.siteAddressId : (typed ? '__custom' : '');
+
+        const options = saved.map(a => `
+            <option value="${Utils.escapeHtml(a.id)}" ${a.id === chosen ? 'selected' : ''}>
+                ${Utils.escapeHtml(Utils.addressSummary(a))}
+            </option>`).join('');
+
+        return `
+            ${chosen === '' ? '<option value="" selected>Choose a property…</option>' : ''}
+            ${options}
+            <option value="__custom" ${chosen === '__custom' ? 'selected' : ''}>Custom address…</option>`;
     },
 
     // ── Render line items ──
@@ -565,7 +687,16 @@ const DocumentEditorView = {
                             // Populate client fields
                             container.querySelector('#editor-client-email').value = client.email || '';
                             container.querySelector('#editor-client-phone').value = client.phone || '';
-                            container.querySelector('#editor-client-address').value = client.address || '';
+
+                            /* A different client means a different set of
+                               properties, so the previous job site is cleared
+                               rather than carried across — carrying it is the
+                               whole complaint. Re-adopted only when the new
+                               client has exactly one. */
+                            self._currentDoc.siteAddress = '';
+                            self._currentDoc.siteAddressId = '';
+                            self._adoptSiteAddress(self._currentDoc);
+                            self._refreshSiteFields(container);
 
                             Utils.haptic('light');
                             await self._renumberForClient(container);
@@ -591,6 +722,7 @@ const DocumentEditorView = {
                     self._currentDoc.clientName = client.name;
                     self._allClients = await db.getAllClients();
                     clientDetailsEl.style.display = '';
+                    self._refreshSiteFields(container);
                     await self._renumberForClient(container);
                     self._autoSave();
                 }
@@ -602,8 +734,12 @@ const DocumentEditorView = {
             setTimeout(() => { suggestionsEl.innerHTML = ''; }, 200);
         });
 
-        // ── Client detail fields ──
-        ['email', 'phone', 'address'].forEach(field => {
+        /* ── Client detail fields ──
+           Email and phone belong to the CLIENT — one contractor, one number.
+           The address deliberately no longer does: it moved to the document,
+           below, because a contractor has many houses and an invoice must keep
+           the one it was written for. */
+        ['email', 'phone'].forEach(field => {
             const el = container.querySelector(`#editor-client-${field}`);
             if (el) {
                 el.addEventListener('input', Utils.debounce(async () => {
@@ -617,6 +753,77 @@ const DocumentEditorView = {
                 }, 500));
             }
         });
+
+        // ── Job site (stored on the document) ──
+        const sitePicker = container.querySelector('#editor-site-picker');
+        const siteText = container.querySelector('#editor-site-address');
+        const siteSave = container.querySelector('#editor-site-save');
+
+        if (sitePicker) {
+            sitePicker.addEventListener('change', () => {
+                if (sitePicker.value === '') {                   // "Choose a property…"
+                    self._currentDoc.siteAddress = '';
+                    self._currentDoc.siteAddressId = '';
+                    siteText.value = '';
+                } else if (sitePicker.value === '__custom') {
+                    self._currentDoc.siteAddressId = '';
+                    siteText.focus();
+                } else {
+                    const entry = self._siteAddresses().find(a => a.id === sitePicker.value);
+                    if (entry) {
+                        // Copy the text in. The document must not depend on the
+                        // saved entry still existing, or reading the same.
+                        self._currentDoc.siteAddress = entry.address;
+                        self._currentDoc.siteAddressId = entry.id === 'legacy' ? '' : entry.id;
+                        siteText.value = entry.address;
+                        Utils.haptic('light');
+                    }
+                }
+                self._refreshSiteSaveButton(container);
+                self._autoSave();
+            });
+        }
+
+        if (siteText) {
+            siteText.addEventListener('input', Utils.debounce(() => {
+                self._currentDoc.siteAddress = siteText.value;
+                // Typing makes this a one-off address unless it happens to match
+                // a saved property exactly.
+                const match = self._matchSavedAddress(siteText.value);
+                self._currentDoc.siteAddressId = match && match.id !== 'legacy' ? match.id : '';
+                if (sitePicker) sitePicker.value = match ? match.id : '__custom';
+                self._refreshSiteSaveButton(container);
+                self._autoSave();
+            }, 400));
+        }
+
+        if (siteSave) {
+            siteSave.addEventListener('click', async () => {
+                const client = self._getClient();
+                const address = String(self._currentDoc.siteAddress || '').trim();
+                if (!client || !address) return;
+
+                /* Labelled from the street line rather than asking. Contractors
+                   name houses by street, and a keyboard prompt in a driveway is
+                   exactly the friction that stops this being used. Renameable
+                   under Clients. */
+                const label = address.split(/\r?\n/)[0].trim().slice(0, 40);
+                const entry = { id: Utils.newAddressId(), label, address };
+
+                // Materialise a pre-list address with a real id on first write.
+                const existing = Utils.clientAddresses(client)
+                    .map(a => (a.id === 'legacy' ? { ...a, id: Utils.newAddressId() } : a));
+                client.addresses = existing.concat(entry);
+
+                await db.saveClient(client);
+                self._allClients = await db.getAllClients();
+                self._currentDoc.siteAddressId = entry.id;
+                self._refreshSiteFields(container);
+                Utils.haptic('medium');
+                Toast.show(`Saved to ${client.name}`, 'success');
+                self._autoSave();
+            });
+        }
 
         // ── Number ──
         const numInput = container.querySelector('#editor-document-id');

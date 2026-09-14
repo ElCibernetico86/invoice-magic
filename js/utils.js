@@ -195,6 +195,13 @@ const Utils = {
         doc.depositValue = parseFloat(doc.depositValue) || 0;
         doc.paymentLink = doc.paymentLink || company?.paymentUrl || '';
         doc.attachments = Array.isArray(doc.attachments) ? doc.attachments : [];
+        /* The job site is COPIED onto the document, not looked up from the
+           client. An invoice is a record of what was true when it was issued;
+           editing a client's address later must not rewrite the address printed
+           on work that was already billed. Empty here means a pre-list document
+           — documentSiteAddress() falls back for those. */
+        doc.siteAddress = typeof doc.siteAddress === 'string' ? doc.siteAddress : '';
+        doc.siteAddressId = doc.siteAddressId || '';
         doc.activity = Array.isArray(doc.activity) ? doc.activity : [];
         doc.lineItems = (doc.lineItems || []).map(item => ({
             itemNote: '',
@@ -484,6 +491,13 @@ const Utils = {
             clientMessage: '',
             clientId: null,
             clientName: '',
+            /* Present-but-empty on purpose. A document created before job sites
+               existed has no such key at all, and that difference is how the
+               editor tells "not chosen yet" from "predates the feature" —
+               the second case inherits the client's old address so the document
+               keeps printing what it always printed. */
+            siteAddress: '',
+            siteAddressId: '',
             isTaxEnabled: false,
             discountType: 'none',
             discountValue: 0,
@@ -521,6 +535,12 @@ const Utils = {
             clientMessage: estimate.clientMessage || '',
             clientId: estimate.clientId,
             clientName: estimate.clientName || '',
+            /* The invoice bills the house the estimate was written for. This
+               list is explicit rather than a spread, so a new field added to
+               documents is silently dropped here unless it is added — which is
+               how the job site would have gone missing on every conversion. */
+            siteAddress: estimate.siteAddress || '',
+            siteAddressId: estimate.siteAddressId || '',
             isTaxEnabled: estimate.isTaxEnabled !== false,
             discountType: estimate.discountType || 'none',
             discountValue: estimate.discountValue || 0,
@@ -578,6 +598,45 @@ const Utils = {
             return this.escapeHtml(street) + '<br>' + this.escapeHtml(m[2].replace(/\s{2,}/g, ' '));
         }
         return this.escapeHtml(raw);
+    },
+
+    // ── Client properties / job-site addresses ──
+    /* Alex's clients are general contractors who run several houses at once, so
+       one address per client was never enough. Each client now keeps a LIST of
+       properties, and each document copies the one it was written for.
+
+       The old single `client.address` is deliberately left in place and is
+       never written again. Documents created before this change have no
+       `siteAddress` of their own and fall back to it — because it is frozen,
+       those documents now render the same thing forever instead of silently
+       following whatever address was typed most recently. */
+
+    /** A client's properties, presenting a pre-list client as a one-entry list. */
+    clientAddresses(client) {
+        if (!client) return [];
+        if (Array.isArray(client.addresses)) return client.addresses.filter(a => a && a.address);
+        const legacy = String(client.address || '').trim();
+        return legacy ? [{ id: 'legacy', label: 'Main', address: legacy }] : [];
+    },
+
+    newAddressId() {
+        return `addr-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    },
+
+    /** What a document should print: its own copy, else the pre-list fallback. */
+    documentSiteAddress(doc, client) {
+        const own = String(doc?.siteAddress || '').trim();
+        if (own) return own;
+        return String(client?.address || '').trim();
+    },
+
+    /** "Willow reno — 77 Willow Ln, Frisco" for pickers and lists. */
+    addressSummary(entry) {
+        if (!entry) return '';
+        const oneLine = String(entry.address || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).join(', ');
+        const label = String(entry.label || '').trim();
+        if (label && oneLine) return `${label} — ${oneLine}`;
+        return label || oneLine;
     },
 
     // ── Haptic Feedback ──

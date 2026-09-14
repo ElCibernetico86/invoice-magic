@@ -285,7 +285,9 @@ class InvoiceMagicDB {
         const existing = await this.findClientByName(trimmed);
         if (existing) return existing;
 
-        const newClient = { name: trimmed, email: '', phone: '', address: '' };
+        // `address` stays for documents written before job sites existed; new
+        // properties go in `addresses`. See Utils.clientAddresses().
+        const newClient = { name: trimmed, email: '', phone: '', address: '', addresses: [] };
         const id = await this.add(STORES.CLIENTS, newClient);
         return { ...newClient, id };
     }

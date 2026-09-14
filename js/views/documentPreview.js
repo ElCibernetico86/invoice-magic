@@ -13,6 +13,15 @@ const DocumentPreviewView = {
     _client: null,
     _payments: [],
 
+    /* The address this document was written for — its own copy, falling back to
+       the client's pre-list address for documents created before job sites
+       existed. Never read `_client.address` directly in a template: that is the
+       bug where billing a new house rewrote the address on every past invoice
+       for that contractor. */
+    _siteAddress() {
+        return Utils.documentSiteAddress(this._doc, this._client);
+    },
+
     // ── Render the preview ──
     async render(container, docId) {
         this._doc = await db.getDocument(docId);
@@ -178,7 +187,7 @@ const DocumentPreviewView = {
                     <div style="font-weight: 700; margin-bottom: 4px; color: #1c1c1e;">FOR:</div>
                     <div style="font-weight: 500; color: #1c1c1e;">${Utils.escapeHtml(this._doc.clientName || 'No Client')}</div>
                     ${this._client && this._client.email ? `<div class="preview-meta-sub">${Utils.escapeHtml(this._client.email)}</div>` : ''}
-                    ${this._client && this._client.address ? `<div class="preview-meta-sub" style="margin-top: 2px;">${Utils.formatAddressHtml(this._client.address)}</div>` : ''}
+                    ${this._siteAddress() ? `<div class="preview-meta-sub" style="margin-top: 2px;">${Utils.formatAddressHtml(this._siteAddress())}</div>` : ''}
                 </div>
                 <div class="meta-section" style="text-align: right;">
                     <div style="display: flex; justify-content: flex-end; gap: 24px;">
@@ -261,7 +270,7 @@ const DocumentPreviewView = {
                     <span style="font-weight: 600; color: #1c1c1e;">FOR:</span>
                     <span style="font-weight: 500; color: #1c1c1e;">${Utils.escapeHtml(this._doc.clientName || 'No Client')}</span>
                     ${this._client && this._client.email ? `<div class="preview-meta-sub">${Utils.escapeHtml(this._client.email)}</div>` : ''}
-                    ${this._client && this._client.address ? `<div class="preview-meta-sub" style="margin-top: 2px;">${Utils.formatAddressHtml(this._client.address)}</div>` : ''}
+                    ${this._siteAddress() ? `<div class="preview-meta-sub" style="margin-top: 2px;">${Utils.formatAddressHtml(this._siteAddress())}</div>` : ''}
                 </div>
                 <div class="meta-section" style="text-align: right; text-transform: uppercase;">
                     <div style="display: flex; justify-content: flex-end; gap: 16px;">
@@ -333,7 +342,7 @@ const DocumentPreviewView = {
                     <div style="font-weight: 700; color: var(--brand-color); text-transform: uppercase; font-size: 12px; margin-bottom: 6px;">FOR:</div>
                     <div style="font-weight: 700; font-size: 15px; color: #1c1c1e;">${Utils.escapeHtml(this._doc.clientName || 'No Client')}</div>
                     ${this._client && this._client.email ? `<div class="preview-meta-sub">${Utils.escapeHtml(this._client.email)}</div>` : ''}
-                    ${this._client && this._client.address ? `<div class="preview-meta-sub" style="margin-top: 2px;">${Utils.formatAddressHtml(this._client.address)}</div>` : ''}
+                    ${this._siteAddress() ? `<div class="preview-meta-sub" style="margin-top: 2px;">${Utils.formatAddressHtml(this._siteAddress())}</div>` : ''}
                 </div>
                 <div style="flex: 1; text-align: right;">
                     <div style="display: flex; justify-content: flex-end; gap: 12px;">
@@ -401,7 +410,7 @@ const DocumentPreviewView = {
                 </div>
             </div>
             <div class="template-flex" style="justify-content:space-between; margin-bottom:14px;">
-                <div><strong>Client</strong><br>${Utils.escapeHtml(this._doc.clientName || 'No Client')}<br><span class="preview-meta-sub">${Utils.formatAddressHtml(this._client?.address)}</span></div>
+                <div><strong>Client</strong><br>${Utils.escapeHtml(this._doc.clientName || 'No Client')}<br><span class="preview-meta-sub">${Utils.formatAddressHtml(this._siteAddress())}</span></div>
                 <div style="text-align:right;"><strong>${Utils.escapeHtml(this._doc.documentID)}</strong><br>Created ${Utils.formatDate(this._doc.creationDate)}<br>Due ${Utils.formatDate(this._doc.dueDate)}</div>
             </div>
             ${this._renderTable()}
@@ -419,7 +428,11 @@ const DocumentPreviewView = {
             </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:16px;">
                 <div><div class="preview-meta-label">From</div><strong>${Utils.escapeHtml(this._company.name || 'Your Company')}</strong></div>
-                <div><div class="preview-meta-label">Bill To</div><strong>${Utils.escapeHtml(this._doc.clientName || 'No Client')}</strong></div>
+                <div>
+                    <div class="preview-meta-label">Bill To</div>
+                    <strong>${Utils.escapeHtml(this._doc.clientName || 'No Client')}</strong>
+                    ${this._siteAddress() ? `<div class="preview-meta-sub" style="margin-top:2px;">${Utils.formatAddressHtml(this._siteAddress())}</div>` : ''}
+                </div>
             </div>
             ${this._renderTable()}
             ${this._renderTotalsBlock()}
