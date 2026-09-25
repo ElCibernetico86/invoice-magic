@@ -1,7 +1,7 @@
 # Handoff — 2026-09-25 — Check printing
 
-## Status: DONE, verified in-browser, pushed. Assets at **v35**.
-Commit `8fccb55`.
+## Status: DONE, verified in-browser, pushed. Assets at **v36**.
+Commits `8fccb55` (build) + `e390b0d` (Alex's three fixes).
 
 **Alex can write and print checks onto the Chase pre-printed laser stock.**
 Tools → Checks. Full background in
@@ -12,8 +12,38 @@ Tools → Checks. Full background in
   the number on the sheet he is feeding so the register matches the paper).
 - **Register is half the point** — new `CHECKS` store, `DB_VERSION 2 → 3`, additive only.
   Cloud backup iterates `Object.values(STORES)` so it was picked up with no change.
-- **Alignment**: inch coordinates from the physical page corner + a saved X/Y offset, and a
-  test page with inch rulers for plain paper.
+- **Alignment**: inch coordinates from the physical page corner, **separate X/Y offsets for the
+  check and for the stubs**, and a test page with inch rulers for plain paper. A layout saved
+  before the split keeps its stubs following the check offset, so nothing calibrated moves.
+- **Logo on the stubs** from `company.logoData`, with a height control (logo aspect ratios vary
+  too much for a fixed size).
+
+### ⚠️ TOUCH: modals used to dismiss themselves — fixed app-wide in `e390b0d`
+
+Alex reported "Align Printer needs a double tap and closes itself." It was **not** that button —
+it was **every bottom sheet in the app, in twelve places**, and invisible with a mouse.
+
+`click` + `e.target === overlay` breaks on touch: a tap fires touchend and **then a synthesized
+click up to ~300ms later**. The overlay is appended during the first event, so the ghost click
+lands on a backdrop that did not exist when the finger went down. The sheet occupies only the
+bottom half (`align-items:flex-end`, `max-height:50vh`), so **any button in the top half opens a
+modal that closes itself.**
+
+**Always use `Utils.dismissOnBackdrop(overlay)`** — it requires the press to start *and* end on
+the backdrop. Never re-introduce the bare `click` check.
+
+### ⚠️ Two base classes set NO color — a bare one is invisible
+
+- `.modal-action-btn` — measured **1.15:1** (white on near-white) before `e390b0d` gave the base
+  rule a legible default. Four buttons were in that state, two of them pre-existing.
+- `.settings-action-btn` — still needs `settings-action-export` or `settings-action-import`.
+
+If a button looks "greyed out", measure the contrast before assuming it is disabled.
+
+### ⚠️ The sheet is 50vh — watch what you add to a modal
+
+The calibration panel grew past it and pushed Save below the fold on a phone, which reads as the
+same "button is broken" problem. Check at 375px after adding to any modal.
 
 ### ⚠️ Rules specific to checks
 
