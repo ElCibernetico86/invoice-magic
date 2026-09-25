@@ -1361,6 +1361,12 @@ textarea.ios-input {
     font: var(--font-headline);
     cursor: pointer;
     transition: all var(--transition-fast);
+    /* A legible DEFAULT. This rule set no color at all, so any button using the
+       base class without a -primary/-cancel/-destructive modifier rendered as
+       inherited white on a near-white fill — measured 1.15:1, i.e. invisible.
+       Four buttons were in that state. The modifiers below still override. */
+    background: var(--color-fill-secondary);
+    color: var(--color-label);
 }
 
 .modal-action-btn:active {
@@ -2557,6 +2563,26 @@ textarea.ios-input {
     font: var(--font-footnote);
     font-weight: 700;
     cursor: pointer;
+}
+
+/* Calibration groups: two numbers side by side read as a pair, which is what
+   they are — one nudge in two directions. */
+.cal-group-title {
+    font: var(--font-footnote);
+    font-weight: 700;
+    color: var(--color-label-secondary);
+    margin: 14px 0 2px;
+}
+
+.modal-form.cal-pair {
+    flex-direction: row;
+    gap: 10px;
+    margin: 0;
+}
+
+.modal-form.cal-pair > label {
+    flex: 1;
+    min-width: 0;
 }
 
 /* A check row carries two buttons on top of the usual body+value, which is

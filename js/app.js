@@ -226,7 +226,7 @@ const App = {
 
         document.getElementById('app').appendChild(overlay);
         overlay.querySelector('#composer-cancel').addEventListener('click', () => overlay.remove());
-        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        Utils.dismissOnBackdrop(overlay);
         overlay.querySelectorAll('[data-preset-id]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const clientId = parseInt(overlay.querySelector('#composer-client').value, 10);

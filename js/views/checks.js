@@ -35,9 +35,24 @@ const ChecksView = {
        makes a check answerable six months later. */
     STUB_TOPS: [3.55, 7.05],
 
+    /* Check fields and stubs move independently. They are printed in one pass
+       on one sheet, but they line up against different things: the check
+       against pre-printed rules the bank reads, the stubs against nothing at
+       all. Sharing one offset meant correcting the check pushed the stubs out
+       of the paper's own bands. */
     _layout(company) {
         const saved = (company && company.checkLayout) || {};
-        return { offsetX: +saved.offsetX || 0, offsetY: +saved.offsetY || 0 };
+        const num = (v, dflt = 0) => (Number.isFinite(+v) ? +v : dflt);
+        return {
+            offsetX: num(saved.offsetX),
+            offsetY: num(saved.offsetY),
+            // Fall back to the check offset so a layout saved before stubs were
+            // separately adjustable keeps printing exactly where it did.
+            stubOffsetX: saved.stubOffsetX === undefined ? num(saved.offsetX) : num(saved.stubOffsetX),
+            stubOffsetY: saved.stubOffsetY === undefined ? num(saved.offsetY) : num(saved.stubOffsetY),
+            stubLogo: saved.stubLogo !== false,
+            stubLogoHeight: num(saved.stubLogoHeight, 0.45),
+        };
     },
 
     // ── The Tools section ──
@@ -163,35 +178,67 @@ const ChecksView = {
     // ── Calibration ──
     _showCalibration(state, onChange) {
         const layout = this._layout(state.company);
+        const hasLogo = !!(state.company && state.company.logoData);
+
         const overlay = this._sheet(`
             <div class="modal-title">Printer Alignment</div>
             <div class="modal-message" style="text-align:left;">
-                Print the test page on <strong>plain paper</strong>, then hold it against a real check
-                up to a window. If the printing sits low, increase Down. If it sits left, increase Right.
-                Measured in inches — a sixteenth is 0.0625.
-                <br><br>
-                <strong>Scale must be 100%.</strong> Turn off “Fit to Page” in the print dialog, or every
-                field shifts and no offset here will fix it.
+                Test on <strong>plain paper</strong>, hold it against a real check at a window, then nudge.
+                Inches — a sixteenth is 0.0625.
+                <strong>Print at 100%</strong>, “Fit to Page” off, or no offset can help.
             </div>
-            <div class="modal-form">
-                <label>Move right (inches)<input id="cal-x" type="number" step="0.0625" value="${layout.offsetX}"></label>
-                <label>Move down (inches)<input id="cal-y" type="number" step="0.0625" value="${layout.offsetY}"></label>
+
+            <div class="cal-group-title">Check — date, payee, amount</div>
+            <div class="modal-form cal-pair">
+                <label>Right (in)<input id="cal-x" type="number" step="0.0625" value="${layout.offsetX}"></label>
+                <label>Down (in)<input id="cal-y" type="number" step="0.0625" value="${layout.offsetY}"></label>
             </div>
+
+            <div class="cal-group-title">Stubs — the two tear-off records</div>
+            <div class="modal-form cal-pair">
+                <label>Right (in)<input id="cal-sx" type="number" step="0.0625" value="${layout.stubOffsetX}"></label>
+                <label>Down (in)<input id="cal-sy" type="number" step="0.0625" value="${layout.stubOffsetY}"></label>
+            </div>
+
+            <div class="cal-group-title">Logo on stubs</div>
+            ${hasLogo ? `
+                <div class="modal-form cal-pair">
+                    <label class="modal-check"><input type="checkbox" id="cal-logo" ${layout.stubLogo ? 'checked' : ''}> Show logo</label>
+                    <label>Height (in)<input id="cal-logo-h" type="number" step="0.05" min="0.1" max="1.5" value="${layout.stubLogoHeight}"></label>
+                </div>
+            ` : `<div class="modal-message" style="text-align:left;">
+                    No logo saved — add one under Settings → Business Profile.
+                 </div>`}
+
             <div class="modal-actions">
                 <button class="modal-action-btn modal-action-primary" id="cal-test">Print Test Page</button>
-                <button class="modal-action-btn" id="cal-save">Save Offsets</button>
+                <button class="modal-action-btn" id="cal-save">Save Alignment</button>
                 <button class="modal-action-btn modal-action-cancel" id="cal-cancel">Close</button>
             </div>
         `);
 
-        const read = () => ({
-            offsetX: parseFloat(overlay.querySelector('#cal-x').value) || 0,
-            offsetY: parseFloat(overlay.querySelector('#cal-y').value) || 0,
-        });
+        const read = () => {
+            const n = (sel, dflt = 0) => {
+                const el = overlay.querySelector(sel);
+                const v = el ? parseFloat(el.value) : NaN;
+                return Number.isFinite(v) ? v : dflt;
+            };
+            const logoEl = overlay.querySelector('#cal-logo');
+            return {
+                offsetX: n('#cal-x'),
+                offsetY: n('#cal-y'),
+                stubOffsetX: n('#cal-sx'),
+                stubOffsetY: n('#cal-sy'),
+                stubLogo: logoEl ? logoEl.checked : layout.stubLogo,
+                stubLogoHeight: n('#cal-logo-h', layout.stubLogoHeight),
+            };
+        };
 
         overlay.querySelector('#cal-cancel').addEventListener('click', () => overlay.remove());
 
         overlay.querySelector('#cal-test').addEventListener('click', () => {
+            // Prints with the values currently typed in, not the saved ones —
+            // otherwise every adjustment needs a save before it can be tested.
             const company = { ...state.company, checkLayout: read() };
             this.print({
                 checkNumber: '0000',
@@ -245,10 +292,19 @@ const ChecksView = {
             minimumFractionDigits: 2, maximumFractionDigits: 2,
         });
 
-        // The stubs: plain paper, so this is a record, not a form.
+        /* The stubs: plain paper, so this is a record, not a form. They take
+           their OWN offset — see _layout. */
+        const sx = layout.stubOffsetX;
+        const sy = layout.stubOffsetY;
+        const logo = layout.stubLogo && company && company.logoData
+            ? `<img src="${Utils.escapeHtml(company.logoData)}" alt=""
+                    style="height:${layout.stubLogoHeight.toFixed(3)}in; display:block; margin-bottom:0.06in;">`
+            : '';
+
         const stubs = this.STUB_TOPS.map(top => `
-            <div style="position:absolute; left:${(0.75 + dx).toFixed(4)}in; top:${(top + dy).toFixed(4)}in;
+            <div style="position:absolute; left:${(0.75 + sx).toFixed(4)}in; top:${(top + sy).toFixed(4)}in;
                  font-size:10pt; line-height:1.6;">
+                ${logo}
                 <div><strong>${Utils.escapeHtml(company && company.name || '')}</strong></div>
                 <div>Check #${Utils.escapeHtml(check.checkNumber || '—')} &nbsp;·&nbsp; ${Utils.formatDate(check.checkDate)}</div>
                 <div>Pay to: ${Utils.escapeHtml(check.payee || '')}</div>
@@ -324,7 +380,7 @@ const ChecksView = {
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `<div class="modal-sheet modal-sheet-tall"><div class="modal-handle"></div>${innerHtml}</div>`;
         document.getElementById('app').appendChild(overlay);
-        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        Utils.dismissOnBackdrop(overlay);
         return overlay;
     },
 };

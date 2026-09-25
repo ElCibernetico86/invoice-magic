@@ -526,7 +526,7 @@ const SettingsView = {
                 document.getElementById('app').appendChild(overlay);
 
                 overlay.querySelector('#modal-import-cancel').addEventListener('click', () => overlay.remove());
-                overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+                Utils.dismissOnBackdrop(overlay);
 
                 overlay.querySelector('#modal-import-confirm').addEventListener('click', async () => {
                     overlay.remove();
@@ -719,7 +719,7 @@ const SettingsView = {
                 `;
                 document.getElementById('app').appendChild(overlay);
                 overlay.querySelector('#cloud-restore-cancel').addEventListener('click', () => overlay.remove());
-                overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+                Utils.dismissOnBackdrop(overlay);
                 overlay.querySelector('#cloud-restore-confirm').addEventListener('click', async () => {
                     overlay.remove();
                     const ok = await cloud.restoreFromCloud();

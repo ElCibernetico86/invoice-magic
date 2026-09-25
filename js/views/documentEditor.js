@@ -1263,7 +1263,7 @@ const DocumentEditorView = {
         `;
         document.getElementById('app').appendChild(overlay);
         overlay.querySelector('#cancel').addEventListener('click', () => overlay.remove());
-        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        Utils.dismissOnBackdrop(overlay);
         overlay.querySelector('#save-signature').addEventListener('click', async () => {
             const name = overlay.querySelector('#signature-name').value.trim();
             if (!name) return Toast.show('Signer name required', 'error');
@@ -1298,7 +1298,7 @@ const DocumentEditorView = {
         `;
         document.getElementById('app').appendChild(overlay);
         overlay.querySelector('#cancel').addEventListener('click', () => overlay.remove());
-        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        Utils.dismissOnBackdrop(overlay);
         overlay.querySelector('#save-attachment').addEventListener('click', async () => {
             const name = overlay.querySelector('#attachment-name').value.trim();
             if (!name) return Toast.show('Attachment name required', 'error');
@@ -1342,7 +1342,7 @@ const DocumentEditorView = {
         `;
         document.getElementById('app').appendChild(overlay);
         overlay.querySelector('#modal-cancel').addEventListener('click', () => overlay.remove());
-        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        Utils.dismissOnBackdrop(overlay);
         overlay.querySelectorAll('[data-catalog-id]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const item = this._catalog.find(c => c.id === parseInt(btn.dataset.catalogId, 10));
@@ -1392,7 +1392,7 @@ const DocumentEditorView = {
 
         document.getElementById('app').appendChild(overlay);
         overlay.querySelector('#modal-cancel').addEventListener('click', () => overlay.remove());
-        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        Utils.dismissOnBackdrop(overlay);
         overlay.querySelector('#modal-save-payment').addEventListener('click', async () => {
             const amount = parseFloat(overlay.querySelector('#payment-amount').value) || 0;
             if (amount <= 0) {
@@ -1440,7 +1440,7 @@ const DocumentEditorView = {
         document.getElementById('app').appendChild(overlay);
 
         overlay.querySelector('#modal-cancel').addEventListener('click', () => overlay.remove());
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        Utils.dismissOnBackdrop(overlay);
 
         overlay.querySelector('#modal-convert').addEventListener('click', async () => {
             overlay.remove();
@@ -1515,7 +1515,7 @@ const DocumentEditorView = {
         document.getElementById('app').appendChild(overlay);
 
         overlay.querySelector('#modal-cancel').addEventListener('click', () => overlay.remove());
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        Utils.dismissOnBackdrop(overlay);
 
         overlay.querySelector('#modal-delete').addEventListener('click', async () => {
             overlay.remove();

@@ -331,7 +331,7 @@ const ClientsView = {
             </div>
         `;
         document.getElementById('app').appendChild(overlay);
-        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        Utils.dismissOnBackdrop(overlay);
         return overlay;
     },
 };

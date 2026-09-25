@@ -639,6 +639,30 @@ const Utils = {
         return label || oneLine;
     },
 
+    /* Close a bottom-sheet modal when the BACKDROP is pressed — but only when
+       the press both started and ended there.
+
+       The naive version (`click` with `e.target === overlay`) breaks on touch.
+       A tap fires touchend, then a synthesized "ghost" click up to ~300ms
+       later. The overlay is appended during the first event, so the ghost click
+       lands on a backdrop that did not exist when the finger went down — and
+       since the sheet only occupies the bottom half, any button in the top half
+       opens a modal that closes itself a moment later. That looked like the
+       button "not working" and needing a double tap.
+
+       Requiring pointerdown AND click on the overlay fixes that, and also stops
+       a drag that starts inside the sheet and releases outside from dismissing
+       it. */
+    dismissOnBackdrop(overlay) {
+        let pressedBackdrop = false;
+        overlay.addEventListener('pointerdown', (e) => { pressedBackdrop = e.target === overlay; });
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay && pressedBackdrop) overlay.remove();
+            pressedBackdrop = false;
+        });
+        return overlay;
+    },
+
     // ── Checks ──
     /* The written amount is the LEGAL amount on a check: where the words and
        the figures disagree, US banks pay the words. So this has to be exact,
