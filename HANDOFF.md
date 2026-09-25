@@ -1,7 +1,7 @@
 # Handoff — 2026-09-25 — Check printing
 
 ## Status: DONE, verified in-browser, pushed. Assets at **v36**.
-Commits `8fccb55` (build) + `e390b0d` (touch/offsets/logo) + `bcf0e0a` (direction buttons).
+Commits `8fccb55` (build) + `e390b0d` (touch/offsets/logo) + `b8f0e9e` (direction buttons).
 
 **Alex can write and print checks onto the Chase pre-printed laser stock.**
 Tools → Checks. Full background in
