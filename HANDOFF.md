@@ -1,6 +1,6 @@
 # Handoff — 2026-09-25 — Check printing
 
-## Status: DONE, verified in-browser, pushed. Assets at **v40**.
+## Status: DONE, verified in-browser, pushed. Assets at **v41**.
 Commits `8fccb55` (build) + `e390b0d` (touch/offsets/logo) + `b8f0e9e` (direction buttons).
 
 **Alex can write and print checks onto the Chase pre-printed laser stock.**
@@ -12,8 +12,12 @@ Tools → Checks. Full background in
   the number on the sheet he is feeding so the register matches the paper).
 - **Guide lines** (`Tools → Checks → Guide Lines`): rules under date, payee, amount and memo.
   **Print Guide Sheet** prints rules and nothing else, for pre-printing stock to hand-write on
-  in the field — which is why Alex asked. A toggle also puts them under software-printed
-  checks, **off by default** (the stock has none, so it's a choice not a correction). Geometry
+  in the field — which is why Alex asked. The **`Guide lines on printed checks` switch sits in
+  the Checks section itself** (not in the panel) and puts the same rules under software-printed
+  checks; **off by default** (the stock has none, so it's a choice not a correction).
+  It was originally a checkbox inside the Guide Lines sheet and Alex could not find it — **a
+  setting you cannot find is a setting that does not exist.** Kept as ONE control; two for one
+  value drift apart. (`4b3fce6`) Geometry
   derives from the same origin as FIELDS, so the saved alignment carries them. (`d0e6124`)
   ⚠️ A rule is **not** fraud protection — it spans the field whether written on or not. A
   hand-written amount still needs a line drawn from the end of the words to the end of the
