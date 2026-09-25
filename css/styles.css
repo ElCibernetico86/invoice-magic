@@ -2698,6 +2698,13 @@ textarea.ios-input {
     accent-color: var(--color-blue);
 }
 
+.modal-message-warn {
+    color: var(--color-label);
+    background: var(--color-fill-tertiary);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
 .check-row {
     cursor: pointer;
 }

@@ -30,6 +30,17 @@ const ChecksView = {
         amountWords: { x: 0.55, y: 1.78, size: 11 },
         memo:        { x: 0.65, y: 2.75, size: 10 },
     },
+    /* Rules under each field, for handwriting a check in the field. Derived
+       from the same page origin as FIELDS above, so the alignment Alex has
+       already dialled in carries the lines with it — no second calibration.
+       `dy` drops the rule below the text baseline; `from`/`to` are the span. */
+    GUIDES: {
+        date:        { from: 6.30, to: 7.95, dy: 0.22 },
+        payee:       { from: 0.85, to: 6.35, dy: 0.24 },
+        amountWords: { from: 0.50, to: 7.95, dy: 0.24 },
+        memo:        { from: 0.60, to: 3.80, dy: 0.22 },
+    },
+
     /* Voucher stock is one letter sheet in three bands. The stubs are plain
        paper — nothing has to go on them, but job/invoice detail there is what
        makes a check answerable six months later. */
@@ -62,6 +73,10 @@ const ChecksView = {
                payee and amount and make them unreadable. Raise it for a logo
                parked off to the side. */
             stubLogoOpacity: num(saved.stubLogoOpacity, 0.15),
+            /* Off by default. Software-printed checks don't need a guide, and
+               the stock Alex bought has none — adding them is a choice, not a
+               correction. */
+            guideLines: saved.guideLines === true,
         };
     },
 
@@ -81,6 +96,7 @@ const ChecksView = {
                         <button class="settings-action-btn settings-action-export" id="write-check">+ Write Check</button>
                         <button class="settings-action-btn settings-action-import" id="calibrate-checks">Align Printer</button>
                         <button class="settings-action-btn settings-action-import" id="stub-logo">Stub Logo</button>
+                        <button class="settings-action-btn settings-action-import" id="guide-lines">Guide Lines</button>
                     </div>
                     ${recent.length ? recent.map(c => `
                         <div class="compact-row check-row ${c.voided ? 'is-void' : ''}" data-edit-check="${c.id}">
@@ -107,6 +123,9 @@ const ChecksView = {
 
         const logo = container.querySelector('#stub-logo');
         if (logo) logo.addEventListener('click', () => this._showLogoModal(state, onChange));
+
+        const guides = container.querySelector('#guide-lines');
+        if (guides) guides.addEventListener('click', () => this._showGuidesModal(state, onChange));
 
         container.querySelectorAll('[data-print-check]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -472,6 +491,62 @@ const ChecksView = {
         });
     },
 
+    // ── Guide lines ──
+    /* Alex wants a batch of stock pre-printed with just the rules, so a check
+       written by hand from the truck still comes out straight and legible.
+       That is a different print job from a check: lines, no data. */
+    _showGuidesModal(state, onChange) {
+        const layout = this._layout(state.company);
+
+        const overlay = this._sheet(`
+            <div class="modal-title">Guide Lines</div>
+            <div class="modal-message" style="text-align:left;">
+                Rules under the date, payee, amount and memo — so a check written by hand
+                stays straight. Run a few sheets of stock through and keep them for the truck.
+            </div>
+
+            <div class="nudge-row">
+                <label class="modal-check nudge-label" style="flex:1 1 auto;">
+                    <input type="checkbox" id="guides-on" ${layout.guideLines ? 'checked' : ''}>
+                    Also print them on checks from this app
+                </label>
+            </div>
+
+            <div class="modal-message modal-message-warn" style="text-align:left;">
+                ⚠️ A rule is not fraud protection — it spans the field whether you have written
+                on it or not. <strong>When writing by hand, draw a line from the end of your
+                words to the end of the amount field.</strong> That is the part the printed rule
+                cannot do for you.
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-action-btn modal-action-primary" id="guides-print">Print Guide Sheet</button>
+                <div class="modal-actions-row">
+                    <button class="modal-action-btn" id="guides-save">Save</button>
+                    <button class="modal-action-btn modal-action-cancel" id="guides-cancel">Close</button>
+                </div>
+            </div>
+        `);
+
+        const q = (sel) => overlay.querySelector(sel);
+
+        q('#guides-cancel').addEventListener('click', () => overlay.remove());
+
+        q('#guides-print').addEventListener('click', () => {
+            /* Rules only — no date, payee, amount or stubs. This goes onto real
+               stock, so anything printed here is on the check for good. */
+            this.print({}, state.company, { guidesOnly: true });
+        });
+
+        q('#guides-save').addEventListener('click', async () => {
+            state.company.checkLayout = { ...layout, guideLines: q('#guides-on').checked };
+            await db.saveCompanyProfile(state.company);
+            overlay.remove();
+            Toast.show('Saved', 'success');
+            onChange();
+        });
+    },
+
     // ── Print ──
     /* Not reusing the invoice print path on purpose: that one sets
        `@page { margin: 12.7mm }`, and every position here is measured from the
@@ -551,15 +626,31 @@ const ChecksView = {
                 PLAIN PAPER TEST — hold against a real check up to a window</div>`;
         })() : '';
 
+        /* Rules under each field. Drawn first so printed text sits on them,
+           the way writing sits on the line of a handwritten check. */
+        const guides = (layout.guideLines || options.guidesOnly)
+            ? Object.entries(this.GUIDES).map(([key, g]) => {
+                const f = this.FIELDS[key];
+                return `<div style="position:absolute;
+                    left:${(g.from + dx).toFixed(4)}in;
+                    top:${(f.y + g.dy + dy).toFixed(4)}in;
+                    width:${(g.to - g.from).toFixed(4)}in;
+                    border-bottom:0.75pt solid #000;"></div>`;
+              }).join('')
+            : '';
+
         const html = `
             <div style="position:relative; width:8.5in; height:11in; font-family:'Helvetica Neue',Arial,sans-serif; color:#000;">
                 ${rulers}
-                ${field('date', Utils.formatDate(check.checkDate))}
-                ${field('payee', check.payee || '')}
-                ${field('amountNum', '**$' + amountNumeric)}
-                ${wordsField}
-                ${field('memo', check.memo || '')}
-                ${stubs}
+                ${guides}
+                ${options.guidesOnly ? '' : `
+                    ${field('date', Utils.formatDate(check.checkDate))}
+                    ${field('payee', check.payee || '')}
+                    ${field('amountNum', '**$' + amountNumeric)}
+                    ${wordsField}
+                    ${field('memo', check.memo || '')}
+                    ${stubs}
+                `}
             </div>`;
 
         this._printPage(html, `Check ${check.checkNumber || ''}`.trim());
