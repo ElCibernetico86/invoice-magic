@@ -2565,24 +2565,69 @@ textarea.ios-input {
     cursor: pointer;
 }
 
-/* Calibration groups: two numbers side by side read as a pair, which is what
-   they are — one nudge in two directions. */
+/* Calibration: a direction on each side of the number, so moving something up
+   or left is a tap rather than remembering that it means a negative. */
 .cal-group-title {
     font: var(--font-footnote);
     font-weight: 700;
     color: var(--color-label-secondary);
-    margin: 14px 0 2px;
+    margin: 12px 0 4px;
 }
 
-.modal-form.cal-pair {
-    flex-direction: row;
-    gap: 10px;
-    margin: 0;
+.nudge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
 }
 
-.modal-form.cal-pair > label {
+.nudge-label {
+    flex: 0 0 72px;
+    font: var(--font-footnote);
+    color: var(--color-label-secondary);
+}
+
+.nudge-sublabel {
+    font: var(--font-footnote);
+    color: var(--color-label-secondary);
+}
+
+.nudge-btn {
+    flex: 0 0 auto;
+    padding: 9px 10px;
+    border: 0.5px solid var(--color-separator);
+    border-radius: 8px;
+    background: var(--color-fill-secondary);
+    color: var(--color-label);
+    font: var(--font-footnote);
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.nudge-btn:active {
+    transform: scale(0.95);
+    opacity: 0.85;
+}
+
+.nudge-row input {
     flex: 1;
     min-width: 0;
+    text-align: center;
+    border: 0.5px solid var(--color-separator);
+    border-radius: 8px;
+    background: var(--color-fill-tertiary);
+    color: var(--color-label);
+    padding: 9px 4px;
+    outline: none;
+    font: var(--font-body);
+}
+
+.nudge-row .modal-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
 }
 
 /* A check row carries two buttons on top of the usual body+value, which is

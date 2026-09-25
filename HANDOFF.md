@@ -1,7 +1,7 @@
 # Handoff — 2026-09-25 — Check printing
 
 ## Status: DONE, verified in-browser, pushed. Assets at **v36**.
-Commits `8fccb55` (build) + `e390b0d` (Alex's three fixes).
+Commits `8fccb55` (build) + `e390b0d` (touch/offsets/logo) + `bcf0e0a` (direction buttons).
 
 **Alex can write and print checks onto the Chase pre-printed laser stock.**
 Tools → Checks. Full background in
@@ -17,6 +17,10 @@ Tools → Checks. Full background in
   before the split keeps its stubs following the check offset, so nothing calibrated moves.
 - **Logo on the stubs** from `company.logoData`, with a height control (logo aspect ratios vary
   too much for a fixed size).
+- **Alignment is nudged with ← Left / Right → / ↑ Up / Down ↓ buttons**, one sixteenth per tap.
+  The fields still accept a typed number. Moving up or left is a NEGATIVE offset, and "type
+  -0.1875" is a bad instruction to follow at a printer — hence the buttons. Taps are rounded to
+  4dp so repeated presses can't drift into `0.18750000000000003`.
 
 ### ⚠️ TOUCH: modals used to dismiss themselves — fixed app-wide in `e390b0d`
 

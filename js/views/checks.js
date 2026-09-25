@@ -176,6 +176,24 @@ const ChecksView = {
     },
 
     // ── Calibration ──
+    /* One nudge = 1/16", which is about the smallest shift worth making and
+       lines up with how check stock is actually off. */
+    NUDGE: 0.0625,
+
+    /* Arrows rather than a bare number box. Moving something UP or LEFT means a
+       negative offset, and "type -0.1875" is a miserable instruction to follow
+       on a phone keyboard while standing at a printer. The field stays editable
+       for anyone who knows the exact number they want. */
+    _nudgeRow(label, id, negLabel, posLabel, value) {
+        return `
+            <div class="nudge-row">
+                <span class="nudge-label">${label}</span>
+                <button type="button" class="nudge-btn" data-nudge="${id}:-1">${negLabel}</button>
+                <input id="${id}" type="number" step="${this.NUDGE}" value="${value}">
+                <button type="button" class="nudge-btn" data-nudge="${id}:1">${posLabel}</button>
+            </div>`;
+    },
+
     _showCalibration(state, onChange) {
         const layout = this._layout(state.company);
         const hasLogo = !!(state.company && state.company.logoData);
@@ -184,31 +202,26 @@ const ChecksView = {
             <div class="modal-title">Printer Alignment</div>
             <div class="modal-message" style="text-align:left;">
                 Test on <strong>plain paper</strong>, hold it against a real check at a window, then nudge.
-                Inches — a sixteenth is 0.0625.
+                Each tap is a sixteenth of an inch.
                 <strong>Print at 100%</strong>, “Fit to Page” off, or no offset can help.
             </div>
 
             <div class="cal-group-title">Check — date, payee, amount</div>
-            <div class="modal-form cal-pair">
-                <label>Right (in)<input id="cal-x" type="number" step="0.0625" value="${layout.offsetX}"></label>
-                <label>Down (in)<input id="cal-y" type="number" step="0.0625" value="${layout.offsetY}"></label>
-            </div>
+            ${this._nudgeRow('Across', 'cal-x', '← Left', 'Right →', layout.offsetX)}
+            ${this._nudgeRow('Up / down', 'cal-y', '↑ Up', 'Down ↓', layout.offsetY)}
 
             <div class="cal-group-title">Stubs — the two tear-off records</div>
-            <div class="modal-form cal-pair">
-                <label>Right (in)<input id="cal-sx" type="number" step="0.0625" value="${layout.stubOffsetX}"></label>
-                <label>Down (in)<input id="cal-sy" type="number" step="0.0625" value="${layout.stubOffsetY}"></label>
-            </div>
+            ${this._nudgeRow('Across', 'cal-sx', '← Left', 'Right →', layout.stubOffsetX)}
+            ${this._nudgeRow('Up / down', 'cal-sy', '↑ Up', 'Down ↓', layout.stubOffsetY)}
 
-            <div class="cal-group-title">Logo on stubs</div>
             ${hasLogo ? `
-                <div class="modal-form cal-pair">
-                    <label class="modal-check"><input type="checkbox" id="cal-logo" ${layout.stubLogo ? 'checked' : ''}> Show logo</label>
-                    <label>Height (in)<input id="cal-logo-h" type="number" step="0.05" min="0.1" max="1.5" value="${layout.stubLogoHeight}"></label>
+                <div class="cal-group-title">Logo on stubs</div>
+                <div class="nudge-row">
+                    <label class="modal-check nudge-label"><input type="checkbox" id="cal-logo" ${layout.stubLogo ? 'checked' : ''}> Show</label>
+                    <span class="nudge-sublabel">Height</span>
+                    <input id="cal-logo-h" type="number" step="0.05" min="0.1" max="1.5" value="${layout.stubLogoHeight}">
                 </div>
-            ` : `<div class="modal-message" style="text-align:left;">
-                    No logo saved — add one under Settings → Business Profile.
-                 </div>`}
+            ` : ''}
 
             <div class="modal-actions">
                 <button class="modal-action-btn modal-action-primary" id="cal-test">Print Test Page</button>
@@ -216,6 +229,19 @@ const ChecksView = {
                 <button class="modal-action-btn modal-action-cancel" id="cal-cancel">Close</button>
             </div>
         `);
+
+        // Arrows move the field they belong to; everything else reads the fields.
+        overlay.querySelectorAll('[data-nudge]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const [id, dir] = btn.dataset.nudge.split(':');
+                const el = overlay.querySelector('#' + id);
+                const current = parseFloat(el.value);
+                const next = (Number.isFinite(current) ? current : 0) + this.NUDGE * Number(dir);
+                // Rounded so repeated taps can't drift into 0.18750000000000003.
+                el.value = Math.round(next * 10000) / 10000;
+                Utils.haptic && Utils.haptic('light');
+            });
+        });
 
         const read = () => {
             const n = (sel, dflt = 0) => {
@@ -237,7 +263,7 @@ const ChecksView = {
         overlay.querySelector('#cal-cancel').addEventListener('click', () => overlay.remove());
 
         overlay.querySelector('#cal-test').addEventListener('click', () => {
-            // Prints with the values currently typed in, not the saved ones —
+            // Prints with the values currently on screen, not the saved ones —
             // otherwise every adjustment needs a save before it can be tested.
             const company = { ...state.company, checkLayout: read() };
             this.print({

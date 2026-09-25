@@ -5,7 +5,7 @@
 // application loads instantly even without a network connection.
 // ============================================================
 
-const CACHE_NAME = 'invoice-magic-v36';
+const CACHE_NAME = 'invoice-magic-v37';
 
 const ASSETS = [
     '/',
