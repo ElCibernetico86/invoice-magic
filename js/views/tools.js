@@ -41,7 +41,7 @@ const ToolsView = {
                 ${this._renderThemeSection()}
                 ${this._renderBillablesSection()}
                 ${this._renderCatalogSection()}
-                ${ChecksView.sectionHtml(this._state.checks)}
+                ${ChecksView.sectionHtml(this._state.checks, this._state.company)}
                 ${this._renderExpensesSection()}
                 ${this._renderTimeSection()}
                 ${this._renderMileageSection()}

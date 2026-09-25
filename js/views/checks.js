@@ -86,8 +86,9 @@ const ChecksView = {
     PAGE_WIDTH: 8.5,
 
     // ── The Tools section ──
-    sectionHtml(checks) {
+    sectionHtml(checks, company) {
         const recent = (checks || []).slice(0, 6);
+        const layout = this._layout(company);
         return `
             <div class="ios-section">
                 <div class="ios-section-header">Checks</div>
@@ -97,6 +98,14 @@ const ChecksView = {
                         <button class="settings-action-btn settings-action-import" id="calibrate-checks">Align Printer</button>
                         <button class="settings-action-btn settings-action-import" id="stub-logo">Stub Logo</button>
                         <button class="settings-action-btn settings-action-import" id="guide-lines">Guide Lines</button>
+                    </div>
+                    <div class="ios-cell">
+                        <div class="t">
+                            <b>Guide lines on printed checks</b>
+                            <small>${layout.guideLines ? 'rules print under each field' : 'off — printed text only'}</small>
+                        </div>
+                        <div class="ios-toggle ${layout.guideLines ? 'active' : ''}" id="guides-toggle"
+                             role="switch" aria-checked="${layout.guideLines}" aria-label="Guide lines on printed checks"></div>
                     </div>
                     ${recent.length ? recent.map(c => `
                         <div class="compact-row check-row ${c.voided ? 'is-void' : ''}" data-edit-check="${c.id}">
@@ -126,6 +135,18 @@ const ChecksView = {
 
         const guides = container.querySelector('#guide-lines');
         if (guides) guides.addEventListener('click', () => this._showGuidesModal(state, onChange));
+
+        /* Saves on tap, like every other toggle in the app. This is the ONLY
+           control for the setting — a copy inside the panel as well would be
+           two switches for one value, and they drift. */
+        const gt = container.querySelector('#guides-toggle');
+        if (gt) gt.addEventListener('click', async () => {
+            const layout = this._layout(state.company);
+            state.company.checkLayout = { ...layout, guideLines: !layout.guideLines };
+            await db.saveCompanyProfile(state.company);
+            Utils.haptic && Utils.haptic('light');
+            onChange();
+        });
 
         container.querySelectorAll('[data-print-check]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -503,13 +524,9 @@ const ChecksView = {
             <div class="modal-message" style="text-align:left;">
                 Rules under the date, payee, amount and memo — so a check written by hand
                 stays straight. Run a few sheets of stock through and keep them for the truck.
-            </div>
-
-            <div class="nudge-row">
-                <label class="modal-check nudge-label" style="flex:1 1 auto;">
-                    <input type="checkbox" id="guides-on" ${layout.guideLines ? 'checked' : ''}>
-                    Also print them on checks from this app
-                </label>
+                <br><br>
+                To put the same rules on checks printed from this app, use the
+                <strong>Guide lines on printed checks</strong> switch under Checks.
             </div>
 
             <div class="modal-message modal-message-warn" style="text-align:left;">
@@ -521,10 +538,7 @@ const ChecksView = {
 
             <div class="modal-actions">
                 <button class="modal-action-btn modal-action-primary" id="guides-print">Print Guide Sheet</button>
-                <div class="modal-actions-row">
-                    <button class="modal-action-btn" id="guides-save">Save</button>
-                    <button class="modal-action-btn modal-action-cancel" id="guides-cancel">Close</button>
-                </div>
+                <button class="modal-action-btn modal-action-cancel" id="guides-cancel">Close</button>
             </div>
         `);
 
@@ -538,13 +552,6 @@ const ChecksView = {
             this.print({}, state.company, { guidesOnly: true });
         });
 
-        q('#guides-save').addEventListener('click', async () => {
-            state.company.checkLayout = { ...layout, guideLines: q('#guides-on').checked };
-            await db.saveCompanyProfile(state.company);
-            overlay.remove();
-            Toast.show('Saved', 'success');
-            onChange();
-        });
     },
 
     // ── Print ──
