@@ -1,6 +1,38 @@
+# Handoff — 2026-09-25 — Check printing
+
+## Status: DONE, verified in-browser, pushed. Assets at **v35**.
+Commit `8fccb55`.
+
+**Alex can write and print checks onto the Chase pre-printed laser stock.**
+Tools → Checks. Full background in
+`painting-business/templates/printing-business-checks_guide.md`.
+
+- Prints ONLY the variable fields — date, payee, amount, amount in words, memo.
+  **Never the signature** (hand-signed) and **never the check number** (pre-printed; he types
+  the number on the sheet he is feeding so the register matches the paper).
+- **Register is half the point** — new `CHECKS` store, `DB_VERSION 2 → 3`, additive only.
+  Cloud backup iterates `Object.values(STORES)` so it was picked up with no change.
+- **Alignment**: inch coordinates from the physical page corner + a saved X/Y offset, and a
+  test page with inch rulers for plain paper.
+
+### ⚠️ Rules specific to checks
+
+- **Check printing must stay at `@page { margin: 0 }`.** The invoice path uses `12.7mm`; a page
+  margin shifts the whole layout and is indistinguishable from a calibration error.
+- **The default field coordinates are estimates.** No reliable published spec exists for this
+  stock. If Alex reports a field off, prefer moving the shared offset; only edit `FIELDS` if the
+  fields are wrong *relative to each other*.
+- **Tell him to print at 100%** — "Fit to Page" silently rescales and no offset can correct it.
+- **`.settings-action-btn` sets no color.** Used without `settings-action-export` /
+  `settings-action-import` it renders white-on-white (measured 1.15:1).
+- **Any new JS file must be added to `ASSETS` in `sw.js`** or the app breaks offline — which is
+  where it is used.
+
+---
+
 # Handoff — 2026-09-14 — Job-site addresses per document
 
-## Status: DONE, verified in-browser, pushed. Assets at **v34**.
+## Status: DONE, verified in-browser, pushed. Assets were **v34**.
 Branch `main`, remote `github.com/ElCibernetico86/invoice-magic.git`, commit `3017d3d`.
 Deploys on **Vercel** (project `invoice-magic`, production `www.invoicemagic.live`),
 auto-deploys on push to `main`.
