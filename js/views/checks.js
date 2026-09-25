@@ -52,8 +52,23 @@ const ChecksView = {
             stubOffsetY: saved.stubOffsetY === undefined ? num(saved.offsetY) : num(saved.stubOffsetY),
             stubLogo: saved.stubLogo !== false,
             stubLogoHeight: num(saved.stubLogoHeight, 0.45),
+            /* Measured from the CENTRE of each stub, not the page corner —
+               "put it in the middle and move from there" is how you place a
+               watermark, and it keeps both stubs identical without two sets of
+               numbers. */
+            stubLogoX: num(saved.stubLogoX),
+            stubLogoY: num(saved.stubLogoY),
+            /* Faint by default: centred at full strength it would sit under the
+               payee and amount and make them unreadable. Raise it for a logo
+               parked off to the side. */
+            stubLogoOpacity: num(saved.stubLogoOpacity, 0.15),
         };
     },
+
+    /* Each stub band is a letter page wide and STUB_HEIGHT tall; the logo hangs
+       off the centre of that box. */
+    STUB_HEIGHT: 3.5,
+    PAGE_WIDTH: 8.5,
 
     // ── The Tools section ──
     sectionHtml(checks) {
@@ -65,6 +80,7 @@ const ChecksView = {
                     <div class="check-actions">
                         <button class="settings-action-btn settings-action-export" id="write-check">+ Write Check</button>
                         <button class="settings-action-btn settings-action-import" id="calibrate-checks">Align Printer</button>
+                        <button class="settings-action-btn settings-action-import" id="stub-logo">Stub Logo</button>
                     </div>
                     ${recent.length ? recent.map(c => `
                         <div class="compact-row check-row">
@@ -89,6 +105,9 @@ const ChecksView = {
 
         const cal = container.querySelector('#calibrate-checks');
         if (cal) cal.addEventListener('click', () => this._showCalibration(state, onChange));
+
+        const logo = container.querySelector('#stub-logo');
+        if (logo) logo.addEventListener('click', () => this._showLogoModal(state, onChange));
 
         container.querySelectorAll('[data-print-check]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -196,7 +215,6 @@ const ChecksView = {
 
     _showCalibration(state, onChange) {
         const layout = this._layout(state.company);
-        const hasLogo = !!(state.company && state.company.logoData);
 
         const overlay = this._sheet(`
             <div class="modal-title">Printer Alignment</div>
@@ -214,14 +232,6 @@ const ChecksView = {
             ${this._nudgeRow('Across', 'cal-sx', '← Left', 'Right →', layout.stubOffsetX)}
             ${this._nudgeRow('Up / down', 'cal-sy', '↑ Up', 'Down ↓', layout.stubOffsetY)}
 
-            ${hasLogo ? `
-                <div class="cal-group-title">Logo on stubs</div>
-                <div class="nudge-row">
-                    <label class="modal-check nudge-label"><input type="checkbox" id="cal-logo" ${layout.stubLogo ? 'checked' : ''}> Show</label>
-                    <span class="nudge-sublabel">Height</span>
-                    <input id="cal-logo-h" type="number" step="0.05" min="0.1" max="1.5" value="${layout.stubLogoHeight}">
-                </div>
-            ` : ''}
 
             <div class="modal-actions">
                 <button class="modal-action-btn modal-action-primary" id="cal-test">Print Test Page</button>
@@ -249,14 +259,14 @@ const ChecksView = {
                 const v = el ? parseFloat(el.value) : NaN;
                 return Number.isFinite(v) ? v : dflt;
             };
-            const logoEl = overlay.querySelector('#cal-logo');
+            // Logo settings live in their own panel — carry them through
+            // untouched so saving alignment never resets them.
             return {
+                ...layout,
                 offsetX: n('#cal-x'),
                 offsetY: n('#cal-y'),
                 stubOffsetX: n('#cal-sx'),
                 stubOffsetY: n('#cal-sy'),
-                stubLogo: logoEl ? logoEl.checked : layout.stubLogo,
-                stubLogoHeight: n('#cal-logo-h', layout.stubLogoHeight),
             };
         };
 
@@ -280,6 +290,149 @@ const ChecksView = {
             await db.saveCompanyProfile(state.company);
             overlay.remove();
             Toast.show('Alignment saved', 'success');
+            onChange();
+        });
+    },
+
+    // ── Stub logo ──
+    /* Separate from printer alignment on purpose. Alignment is a one-time
+       correction for a physical printer; this is a design choice that gets
+       fiddled with. Sharing one panel made it too tall for a phone, which is
+       the same failure that made the Align button feel broken. */
+    _showLogoModal(state, onChange) {
+        const layout = this._layout(state.company);
+        const logoData = state.company && state.company.logoData;
+
+        if (!logoData) {
+            const warn = this._sheet(`
+                <div class="modal-title">Stub Logo</div>
+                <div class="modal-message">No logo saved yet. Add one under
+                    <strong>Settings → Business Profile</strong>, then come back.</div>
+                <div class="modal-actions">
+                    <button class="modal-action-btn modal-action-cancel" id="logo-close">Close</button>
+                </div>`);
+            warn.querySelector('#logo-close').addEventListener('click', () => warn.remove());
+            return;
+        }
+
+        const overlay = this._sheet(`
+            <div class="modal-title">Stub Logo</div>
+            <div class="logo-preview" id="logo-preview">
+                <img id="logo-preview-img" src="${Utils.escapeHtml(logoData)}" alt="">
+                <span class="logo-preview-text">Walex Pro Finishes</span>
+                <span class="logo-preview-tag">one stub, to scale</span>
+            </div>
+
+            <div class="nudge-row">
+                <label class="modal-check nudge-label"><input type="checkbox" id="logo-on" ${layout.stubLogo ? 'checked' : ''}> Show</label>
+            </div>
+
+            <div class="cal-group-title">Position</div>
+            ${this._nudgeRow('Across', 'logo-x', '← Left', 'Right →', layout.stubLogoX)}
+            ${this._nudgeRow('Up / down', 'logo-y', '↑ Up', 'Down ↓', layout.stubLogoY)}
+
+            <div class="cal-group-title">Size</div>
+            <div class="nudge-row">
+                <span class="nudge-label">Height</span>
+                <button type="button" class="nudge-btn" data-size="-1">−</button>
+                <input id="logo-h" type="number" step="0.05" min="0.1" max="3" value="${layout.stubLogoHeight}">
+                <button type="button" class="nudge-btn" data-size="1">+</button>
+            </div>
+
+            <div class="cal-group-title">Opacity</div>
+            <div class="nudge-row">
+                <input type="range" id="logo-op" class="logo-slider" min="0.05" max="1" step="0.05" value="${layout.stubLogoOpacity}">
+                <span class="nudge-sublabel" id="logo-op-val">${Math.round(layout.stubLogoOpacity * 100)}%</span>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-action-btn modal-action-primary" id="logo-test">Print Test Page</button>
+                <div class="modal-actions-row">
+                    <button class="modal-action-btn" id="logo-save">Save Logo</button>
+                    <button class="modal-action-btn modal-action-cancel" id="logo-cancel">Close</button>
+                </div>
+            </div>
+        `);
+
+        const q = (sel) => overlay.querySelector(sel);
+        const num = (sel, dflt = 0) => {
+            const v = parseFloat(q(sel).value);
+            return Number.isFinite(v) ? v : dflt;
+        };
+        const read = () => ({
+            ...layout,
+            stubLogo: q('#logo-on').checked,
+            stubLogoX: num('#logo-x'),
+            stubLogoY: num('#logo-y'),
+            stubLogoHeight: num('#logo-h', 0.45),
+            stubLogoOpacity: num('#logo-op', 0.15),
+        });
+
+        /* Live preview, drawn to the same scale as the paper: the box is one
+           stub, so inches map onto it by the same factor in both directions
+           and what you see is what prints. */
+        const preview = q('#logo-preview');
+        const img = q('#logo-preview-img');
+        const paint = () => {
+            const v = read();
+            const perInch = preview.clientWidth / this.PAGE_WIDTH;
+            img.style.height = (v.stubLogoHeight * perInch) + 'px';
+            img.style.left = (preview.clientWidth / 2 + v.stubLogoX * perInch) + 'px';
+            img.style.top = (preview.clientHeight / 2 + v.stubLogoY * perInch) + 'px';
+            img.style.opacity = v.stubLogoOpacity;
+            img.style.display = v.stubLogo ? 'block' : 'none';
+            q('#logo-op-val').textContent = Math.round(v.stubLogoOpacity * 100) + '%';
+        };
+
+        overlay.querySelectorAll('[data-nudge]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const [id, dir] = btn.dataset.nudge.split(':');
+                const el = q('#' + id);
+                const cur = parseFloat(el.value);
+                el.value = Math.round(((Number.isFinite(cur) ? cur : 0) + this.NUDGE * Number(dir)) * 10000) / 10000;
+                paint();
+            });
+        });
+        overlay.querySelectorAll('[data-size]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const el = q('#logo-h');
+                const cur = parseFloat(el.value);
+                const next = (Number.isFinite(cur) ? cur : 0.45) + 0.05 * Number(btn.dataset.size);
+                el.value = Math.round(Math.min(3, Math.max(0.1, next)) * 100) / 100;
+                paint();
+            });
+        });
+        ['#logo-on', '#logo-x', '#logo-y', '#logo-h', '#logo-op'].forEach(sel =>
+            q(sel).addEventListener('input', paint));
+
+        /* The sheet slides up over ~350ms, and clientWidth is 0 until that
+           settles — an rAF here painted the logo at zero size. A ResizeObserver
+           repaints the moment the box actually has a width, and again on
+           rotation or a window resize. */
+        if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(() => { if (preview.clientWidth) paint(); }).observe(preview);
+        } else {
+            setTimeout(paint, 400);
+        }
+        paint();
+
+        q('#logo-cancel').addEventListener('click', () => overlay.remove());
+
+        q('#logo-test').addEventListener('click', () => {
+            this.print({
+                checkNumber: '0000',
+                payee: 'ALIGNMENT TEST — do not sign',
+                amount: 1234.56,
+                checkDate: Utils.today(),
+                memo: 'Test print — plain paper only',
+            }, { ...state.company, checkLayout: read() }, { rulers: true });
+        });
+
+        q('#logo-save').addEventListener('click', async () => {
+            state.company.checkLayout = read();
+            await db.saveCompanyProfile(state.company);
+            overlay.remove();
+            Toast.show('Logo saved', 'success');
             onChange();
         });
     },
@@ -322,15 +475,25 @@ const ChecksView = {
            their OWN offset — see _layout. */
         const sx = layout.stubOffsetX;
         const sy = layout.stubOffsetY;
-        const logo = layout.stubLogo && company && company.logoData
-            ? `<img src="${Utils.escapeHtml(company.logoData)}" alt=""
-                    style="height:${layout.stubLogoHeight.toFixed(3)}in; display:block; margin-bottom:0.06in;">`
-            : '';
+        /* The logo is its own absolutely-positioned element per stub, drawn
+           BEFORE the text so the text paints on top — a watermark has to sit
+           behind the thing it watermarks. It rides the stub offset too, so
+           aligning the stubs carries the logo with them. */
+        const logoAt = (top) => {
+            if (!layout.stubLogo || !company || !company.logoData) return '';
+            const cx = this.PAGE_WIDTH / 2 + layout.stubLogoX + sx;
+            const cy = top + this.STUB_HEIGHT / 2 + layout.stubLogoY + sy;
+            return `<img src="${Utils.escapeHtml(company.logoData)}" alt=""
+                style="position:absolute; left:${cx.toFixed(4)}in; top:${cy.toFixed(4)}in;
+                       height:${layout.stubLogoHeight.toFixed(3)}in; width:auto;
+                       transform:translate(-50%,-50%);
+                       opacity:${layout.stubLogoOpacity.toFixed(3)}; z-index:0;">`;
+        };
 
         const stubs = this.STUB_TOPS.map(top => `
+            ${logoAt(top)}
             <div style="position:absolute; left:${(0.75 + sx).toFixed(4)}in; top:${(top + sy).toFixed(4)}in;
-                 font-size:10pt; line-height:1.6;">
-                ${logo}
+                 font-size:10pt; line-height:1.6; z-index:1;">
                 <div><strong>${Utils.escapeHtml(company && company.name || '')}</strong></div>
                 <div>Check #${Utils.escapeHtml(check.checkNumber || '—')} &nbsp;·&nbsp; ${Utils.formatDate(check.checkDate)}</div>
                 <div>Pay to: ${Utils.escapeHtml(check.payee || '')}</div>

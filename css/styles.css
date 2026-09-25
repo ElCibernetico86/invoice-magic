@@ -2630,6 +2630,74 @@ textarea.ios-input {
     flex: 0 0 auto;
 }
 
+/* Logo preview: one stub, to scale. aspect-ratio 8.5/3.5 means an inch maps
+   onto it by the same factor in both directions, so what is on screen is what
+   lands on the paper. */
+/* Height-led rather than width-led: a full-width preview ate enough of a
+   phone screen to push the buttons below the fold, and the scale is preserved
+   either way because aspect-ratio derives the width. */
+.logo-preview {
+    position: relative;
+    height: 100px;
+    /* fit-content, not auto: `width:auto` on a block resolves to the full
+       containing width and ignores the aspect ratio, so the box was full-width
+       and margin:auto had nothing to centre. */
+    width: fit-content;
+    max-width: 100%;
+    aspect-ratio: 8.5 / 3.5;
+    background: #fff;
+    border: 0.5px solid var(--color-separator);
+    border-radius: 8px;
+    overflow: hidden;
+    /* `auto` sides centre it. Keep this as ONE shorthand — an earlier version
+       set margin-left/right:auto above and then a `margin:` shorthand below,
+       which silently reset them to 0. */
+    margin: 6px auto 2px;
+}
+
+.logo-preview img {
+    position: absolute;
+    width: auto;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+/* Stand-ins for the stub text, so the opacity choice is judged against
+   something rather than against an empty box. */
+.logo-preview-text {
+    position: absolute;
+    left: 8%;
+    top: 26%;
+    color: #111;
+    font: var(--font-footnote);
+    font-weight: 700;
+}
+
+.logo-preview-tag {
+    position: absolute;
+    right: 6%;
+    bottom: 6%;
+    color: #999;
+    font-size: 9px;
+}
+
+/* Secondary actions share a row; three stacked full-width buttons is 166px of
+   a 666px sheet. */
+.modal-actions-row {
+    display: flex;
+    gap: 8px;
+}
+
+.modal-actions-row .modal-action-btn {
+    flex: 1;
+}
+
+.logo-slider {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--color-blue);
+}
+
 /* A check row carries two buttons on top of the usual body+value, which is
    more than 375px has room for. Without min-width:0 the flex body refuses to
    shrink below its longest word and the payee breaks one word per line. */
