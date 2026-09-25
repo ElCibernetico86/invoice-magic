@@ -1,6 +1,6 @@
 # Handoff — 2026-09-25 — Check printing
 
-## Status: DONE, verified in-browser, pushed. Assets at **v38**.
+## Status: DONE, verified in-browser, pushed. Assets at **v39**.
 Commits `8fccb55` (build) + `e390b0d` (touch/offsets/logo) + `b8f0e9e` (direction buttons).
 
 **Alex can write and print checks onto the Chase pre-printed laser stock.**
@@ -10,6 +10,13 @@ Tools → Checks. Full background in
 - Prints ONLY the variable fields — date, payee, amount, amount in words, memo.
   **Never the signature** (hand-signed) and **never the check number** (pre-printed; he types
   the number on the sheet he is feeding so the register matches the paper).
+- **Tap a check row to edit it** — number, payee, amount, date, memo. Same form as Write, so
+  the amount-in-words preview and validation cannot drift between the two paths. Editing
+  spreads the existing record, so fields added later are carried through. (`b97c569`)
+- **Void, not delete.** A voided check reads struck through, loses its Print button, and
+  **Save & Print disappears while the box is ticked** — printing a dead number puts a second
+  sheet into the world carrying a number the register says is void. It stays in the register,
+  which is the point. Delete lives inside the edit sheet, not as a row button.
 - **Register is half the point** — new `CHECKS` store, `DB_VERSION 2 → 3`, additive only.
   Cloud backup iterates `Object.values(STORES)` so it was picked up with no change.
 - **Alignment**: inch coordinates from the physical page corner, **separate X/Y offsets for the
