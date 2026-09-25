@@ -1,6 +1,6 @@
 # Handoff — 2026-09-25 — Check printing
 
-## Status: DONE, verified in-browser, pushed. Assets at **v36**.
+## Status: DONE, verified in-browser, pushed. Assets at **v38**.
 Commits `8fccb55` (build) + `e390b0d` (touch/offsets/logo) + `b8f0e9e` (direction buttons).
 
 **Alex can write and print checks onto the Chase pre-printed laser stock.**
@@ -15,8 +15,11 @@ Tools → Checks. Full background in
 - **Alignment**: inch coordinates from the physical page corner, **separate X/Y offsets for the
   check and for the stubs**, and a test page with inch rulers for plain paper. A layout saved
   before the split keeps its stubs following the check offset, so nothing calibrated moves.
-- **Logo on the stubs** from `company.logoData`, with a height control (logo aspect ratios vary
-  too much for a fixed size).
+- **Stub logo is a watermark** (`Tools → Checks → Stub Logo`, its own panel): positioned from the
+  **centre of each stub**, freely nudged, resizable, with an opacity slider and a live
+  to-scale preview. Drawn **before** the text at `z-index:0` vs the text's `1`, so it sits
+  behind it. **Default opacity 0.15** — centred at full strength it hides the payee and amount.
+  It rides the stub offset, so aligning stubs carries the logo with them. (`5260aa9`)
 - **Alignment is nudged with ← Left / Right → / ↑ Up / Down ↓ buttons**, one sixteenth per tap.
   The fields still accept a typed number. Moving up or left is a NEGATIVE offset, and "type
   -0.1875" is a bad instruction to follow at a printer — hence the buttons. Taps are rounded to
@@ -43,6 +46,18 @@ the backdrop. Never re-introduce the bare `click` check.
 - `.settings-action-btn` — still needs `settings-action-export` or `settings-action-import`.
 
 If a button looks "greyed out", measure the contrast before assuming it is disabled.
+
+### ⚠️ CSS gotchas this area has already hit twice
+
+- **A `margin:` shorthand after `margin-left/right: auto` silently resets them.** Cost one
+  round trip on the logo preview. Keep centring in ONE shorthand: `margin: 6px auto 2px`.
+- **`width: auto` with `aspect-ratio` ignores the ratio** and fills the container. Use
+  `width: fit-content` when the ratio should decide the width.
+- **`clientWidth` is 0 until the sheet finishes its ~350ms slide-up.** An `rAF` measurement
+  painted the preview at zero size. Use a `ResizeObserver`, not a timer.
+- **Measuring element positions inside a batched script right after opening a modal reads
+  mid-animation** and reports buttons off-screen when they are not. Measure in a separate
+  call, or trust the screenshot.
 
 ### ⚠️ The sheet is 50vh — watch what you add to a modal
 
