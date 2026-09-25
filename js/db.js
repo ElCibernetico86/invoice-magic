@@ -6,7 +6,7 @@
 // ============================================================
 
 const DB_NAME = 'InvoiceMagicDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;   // 3 adds CHECKS — additive only, existing stores untouched
 
 const STORES = {
     DOCUMENTS: 'documents',
@@ -17,6 +17,7 @@ const STORES = {
     TIME_ENTRIES: 'timeEntries',
     MILEAGE: 'mileageEntries',
     CATALOG: 'catalogItems',
+    CHECKS: 'checks',
 };
 
 class InvoiceMagicDB {
@@ -83,6 +84,16 @@ class InvoiceMagicDB {
                     mileageStore.createIndex('tripDate', 'tripDate', { unique: false });
                     mileageStore.createIndex('clientId', 'clientId', { unique: false });
                     mileageStore.createIndex('documentId', 'documentId', { unique: false });
+                }
+
+                /* Physical checks written against the business account. The
+                   register matters as much as the printing: a missing check
+                   number is a question you cannot answer from memory at
+                   reconciliation time. */
+                if (!db.objectStoreNames.contains(STORES.CHECKS)) {
+                    const checkStore = db.createObjectStore(STORES.CHECKS, { keyPath: 'id', autoIncrement: true });
+                    checkStore.createIndex('checkDate', 'checkDate', { unique: false });
+                    checkStore.createIndex('checkNumber', 'checkNumber', { unique: false });
                 }
 
                 if (!db.objectStoreNames.contains(STORES.CATALOG)) {
@@ -419,6 +430,25 @@ class InvoiceMagicDB {
 
     async deleteCatalogItem(id) {
         return this.delete(STORES.CATALOG, id);
+    }
+
+    // ── Checks ──
+
+    async saveCheck(check) {
+        if (check.id) {
+            await this.put(STORES.CHECKS, check);
+            return check.id;
+        }
+        return this.add(STORES.CHECKS, check);
+    }
+
+    async getAllChecks() {
+        const checks = await this.getAll(STORES.CHECKS);
+        return checks.sort((a, b) => new Date(b.checkDate) - new Date(a.checkDate));
+    }
+
+    async deleteCheck(id) {
+        return this.delete(STORES.CHECKS, id);
     }
 }
 

@@ -639,6 +639,63 @@ const Utils = {
         return label || oneLine;
     },
 
+    // ── Checks ──
+    /* The written amount is the LEGAL amount on a check: where the words and
+       the figures disagree, US banks pay the words. So this has to be exact,
+       and it has to fill the line — the empty space after the words is where
+       fraud gets added, which is why the caller draws a rule to the end. */
+    amountInWords(amount) {
+        const n = Math.max(0, Math.round((+amount || 0) * 100) / 100);
+        const dollars = Math.floor(n);
+        const cents = Math.round((n - dollars) * 100);
+
+        const ones = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+                      'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
+                      'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+        const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy',
+                      'eighty', 'ninety'];
+
+        const underThousand = (v) => {
+            let out = '';
+            if (v >= 100) {
+                out += ones[Math.floor(v / 100)] + ' hundred';
+                v %= 100;
+                if (v) out += ' ';
+            }
+            if (v >= 20) {
+                out += tens[Math.floor(v / 10)];
+                if (v % 10) out += '-' + ones[v % 10];
+            } else if (v > 0) {
+                out += ones[v];
+            }
+            return out;
+        };
+
+        let words;
+        if (dollars === 0) {
+            words = 'zero';
+        } else {
+            // Grouped in thousands. A painting job will never reach a billion,
+            // but stopping at millions would silently print a wrong amount
+            // rather than refusing, so the scale runs one step further.
+            const scales = ['', ' thousand', ' million', ' billion'];
+            const parts = [];
+            let rest = dollars;
+            let scale = 0;
+            while (rest > 0 && scale < scales.length) {
+                const chunk = rest % 1000;
+                if (chunk) parts.unshift(underThousand(chunk) + scales[scale]);
+                rest = Math.floor(rest / 1000);
+                scale++;
+            }
+            words = parts.join(' ');
+        }
+
+        // "and 00/100" is the standard US convention for the cents.
+        const capitalised = words.charAt(0).toUpperCase() + words.slice(1);
+        return `${capitalised} and ${String(cents).padStart(2, '0')}/100`;
+    },
+
     // ── Haptic Feedback ──
     haptic(type = 'light') {
         if ('vibrate' in navigator) {

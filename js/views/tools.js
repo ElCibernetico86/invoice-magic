@@ -6,7 +6,7 @@ const ToolsView = {
     _state: null,
 
     async render(container) {
-        const [docs, clients, payments, expenses, timeEntries, mileageEntries, catalog, company] = await Promise.all([
+        const [docs, clients, payments, expenses, timeEntries, mileageEntries, catalog, company, checks] = await Promise.all([
             db.getAllDocuments(),
             db.getAllClients(),
             db.getAllPayments(),
@@ -15,9 +15,10 @@ const ToolsView = {
             db.getAllMileageEntries(),
             db.getCatalogItems(),
             db.getCompanyProfile(),
+            db.getAllChecks(),
         ]);
 
-        this._state = { docs, clients, payments, expenses, timeEntries, mileageEntries, catalog, company };
+        this._state = { docs, clients, payments, expenses, timeEntries, mileageEntries, catalog, company, checks };
         const metrics = this._metrics();
 
         container.innerHTML = `
@@ -40,6 +41,7 @@ const ToolsView = {
                 ${this._renderThemeSection()}
                 ${this._renderBillablesSection()}
                 ${this._renderCatalogSection()}
+                ${ChecksView.sectionHtml(this._state.checks)}
                 ${this._renderExpensesSection()}
                 ${this._renderTimeSection()}
                 ${this._renderMileageSection()}
@@ -259,6 +261,8 @@ const ToolsView = {
                 this.render(container);
             });
         });
+
+        ChecksView.bind(container, this._state, () => this.render(container));
 
         this._bindDeletes(container);
     },

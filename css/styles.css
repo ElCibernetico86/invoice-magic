@@ -2530,6 +2530,57 @@ textarea.ios-input {
     font: var(--font-body);
 }
 
+/* Checks — the two header buttons sit side by side; .tool-action-row is
+   display:block and stacks them, which is fine for the single-button sections
+   but not here. */
+.check-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.check-actions .settings-action-btn {
+    flex: 1 1 auto;
+    min-width: 130px;
+}
+
+/* Small enough to live inside a register row without dominating it — the
+   full-width action button is 275px tall-ish and swamps the amount. */
+.check-print-btn {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border: 0.5px solid var(--color-separator);
+    border-radius: 8px;
+    background: var(--color-bg-grouped);
+    color: var(--color-blue);
+    font: var(--font-footnote);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* A check row carries two buttons on top of the usual body+value, which is
+   more than 375px has room for. Without min-width:0 the flex body refuses to
+   shrink below its longest word and the payee breaks one word per line. */
+.check-row .compact-body {
+    min-width: 0;
+}
+
+.check-row .compact-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.check-row .compact-value {
+    flex-shrink: 0;
+}
+
+@media (max-width: 420px) {
+    /* The icon is decoration; the buttons are not. */
+    .check-row .compact-icon { display: none; }
+}
+
 /* Client properties — the list of houses a contractor has us working on.
    Styled to sit inside .modal-form, which already dresses the inputs. */
 .address-field {
