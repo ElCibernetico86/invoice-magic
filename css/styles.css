@@ -2698,6 +2698,17 @@ textarea.ios-input {
     accent-color: var(--color-blue);
 }
 
+.check-row {
+    cursor: pointer;
+}
+
+/* A voided check still reads, but shouldn't look like live money. */
+.check-row.is-void .compact-title,
+.check-row.is-void .compact-value {
+    color: var(--color-label-tertiary, var(--color-label-secondary));
+    text-decoration: line-through;
+}
+
 /* A check row carries two buttons on top of the usual body+value, which is
    more than 375px has room for. Without min-width:0 the flex body refuses to
    shrink below its longest word and the payee breaks one word per line. */

@@ -83,15 +83,14 @@ const ChecksView = {
                         <button class="settings-action-btn settings-action-import" id="stub-logo">Stub Logo</button>
                     </div>
                     ${recent.length ? recent.map(c => `
-                        <div class="compact-row check-row">
+                        <div class="compact-row check-row ${c.voided ? 'is-void' : ''}" data-edit-check="${c.id}">
                             <div class="compact-icon ${c.voided ? 'warning' : 'primary'}">#</div>
                             <div class="compact-body">
                                 <div class="compact-title">${Utils.escapeHtml(c.payee || 'No payee')}${c.voided ? ' — VOID' : ''}</div>
                                 <div class="compact-subtitle">#${Utils.escapeHtml(c.checkNumber || '—')} · ${Utils.formatDate(c.checkDate)}${c.memo ? ' · ' + Utils.escapeHtml(c.memo) : ''}</div>
                             </div>
                             <div class="compact-value">${Utils.formatCurrency(c.amount)}</div>
-                            <button class="check-print-btn" data-print-check="${c.id}">Print</button>
-                            <button class="row-delete-btn" data-delete-check="${c.id}">×</button>
+                            ${c.voided ? '' : `<button class="check-print-btn" data-print-check="${c.id}">Print</button>`}
                         </div>
                     `).join('') : '<div class="empty-inline">Print onto pre-printed check stock. Align the printer once before using real checks.</div>'}
                 </div>
@@ -101,7 +100,7 @@ const ChecksView = {
 
     bind(container, state, onChange) {
         const write = container.querySelector('#write-check');
-        if (write) write.addEventListener('click', () => this._showWriteModal(state, onChange));
+        if (write) write.addEventListener('click', () => this._showCheckModal(state, onChange));
 
         const cal = container.querySelector('#calibrate-checks');
         if (cal) cal.addEventListener('click', () => this._showCalibration(state, onChange));
@@ -117,66 +116,93 @@ const ChecksView = {
             });
         });
 
-        container.querySelectorAll('[data-delete-check]').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                /* Deleting breaks the register, which is the one thing the
-                   register exists to prevent. Voiding keeps the number in the
-                   sequence, which is what reconciliation needs. */
-                if (!confirm('Delete this check from the register?\n\nIf the paper check was printed, Void it instead so the number stays in your records.')) return;
-                await db.deleteCheck(parseInt(btn.dataset.deleteCheck, 10));
-                Toast.show('Removed from register', 'success');
-                onChange();
+        /* Delete and Void both live in the edit sheet rather than as a row
+           button. Deleting breaks the register — the one thing the register
+           exists to prevent — so it should take a deliberate look at the check
+           first, with Void sitting right next to it. */
+        container.querySelectorAll('[data-edit-check]').forEach(row => {
+            row.addEventListener('click', () => {
+                const check = (state.checks || []).find(c => c.id === parseInt(row.dataset.editCheck, 10));
+                if (check) this._showCheckModal(state, onChange, check);
             });
         });
     },
 
-    // ── Write ──
-    _showWriteModal(state, onChange) {
+    // ── Write / edit ──
+    /* One form for both. A separate edit modal would duplicate the
+       amount-in-words preview and the validation, and those two are exactly
+       where a check must not drift between code paths. */
+    _showCheckModal(state, onChange, existing = null) {
+        const editing = !!existing;
+        const c = existing || {};
+
         const overlay = this._sheet(`
-            <div class="modal-title">Write Check</div>
+            <div class="modal-title">${editing ? 'Edit Check' : 'Write Check'}</div>
             <div class="modal-form">
-                <label>Check number<input id="check-number" inputmode="numeric" placeholder="the number printed on the sheet"></label>
-                <label>Pay to the order of<input id="check-payee" placeholder="Sherwin-Williams"></label>
-                <label>Amount<input id="check-amount" type="number" step="0.01" min="0" value="0"></label>
-                <label>Date<input id="check-date" type="date" value="${Utils.today()}"></label>
-                <label>Memo<input id="check-memo" placeholder="Job address or invoice #"></label>
+                <label>Check number<input id="check-number" inputmode="numeric"
+                    placeholder="the number printed on the sheet" value="${Utils.escapeHtml(c.checkNumber || '')}"></label>
+                <label>Pay to the order of<input id="check-payee" placeholder="Sherwin-Williams"
+                    value="${Utils.escapeHtml(c.payee || '')}"></label>
+                <label>Amount<input id="check-amount" type="number" step="0.01" min="0"
+                    value="${c.amount != null ? c.amount : 0}"></label>
+                <label>Date<input id="check-date" type="date" value="${Utils.escapeHtml(c.checkDate || Utils.today())}"></label>
+                <label>Memo<input id="check-memo" placeholder="Job address or invoice #"
+                    value="${Utils.escapeHtml(c.memo || '')}"></label>
+                ${editing ? `
+                    <label class="modal-check"><input type="checkbox" id="check-void" ${c.voided ? 'checked' : ''}>
+                        Voided — keeps the number in the register</label>
+                ` : ''}
             </div>
             <div class="modal-message" id="check-words-preview" style="text-align:left;"></div>
             <div class="modal-actions">
                 <button class="modal-action-btn modal-action-primary" id="save-print-check">Save &amp; Print</button>
-                <button class="modal-action-btn" id="save-check">Save Only</button>
-                <button class="modal-action-btn modal-action-cancel" id="cancel-check">Cancel</button>
+                <div class="modal-actions-row">
+                    <button class="modal-action-btn" id="save-check">Save${editing ? '' : ' Only'}</button>
+                    <button class="modal-action-btn modal-action-cancel" id="cancel-check">Cancel</button>
+                </div>
+                ${editing ? `<button class="modal-action-btn modal-action-destructive" id="delete-check">Delete</button>` : ''}
             </div>
         `);
 
-        const amountEl = overlay.querySelector('#check-amount');
-        const preview = overlay.querySelector('#check-words-preview');
+        const q = (sel) => overlay.querySelector(sel);
+        const amountEl = q('#check-amount');
+        const preview = q('#check-words-preview');
+        const voidEl = q('#check-void');
+        const printBtn = q('#save-print-check');
+
         /* Show the written amount as it is typed. It is the legal amount on a
            check — where words and figures disagree, the words are paid — so it
            should never be a surprise that only appears on paper. */
         const refresh = () => {
             const v = parseFloat(amountEl.value) || 0;
             preview.textContent = v > 0 ? Utils.amountInWords(v) : '';
+            // A voided check must not be printable. Printing one would put a
+            // second piece of paper into the world carrying a number the
+            // register says is dead.
+            if (voidEl) printBtn.style.display = voidEl.checked ? 'none' : '';
         };
         amountEl.addEventListener('input', refresh);
+        if (voidEl) voidEl.addEventListener('change', refresh);
         refresh();
 
-        overlay.querySelector('#cancel-check').addEventListener('click', () => overlay.remove());
+        q('#cancel-check').addEventListener('click', () => overlay.remove());
 
         const collect = () => {
-            const payee = overlay.querySelector('#check-payee').value.trim();
-            const amount = parseFloat(overlay.querySelector('#check-amount').value) || 0;
+            const payee = q('#check-payee').value.trim();
+            const amount = parseFloat(amountEl.value) || 0;
             if (!payee) { Toast.show('Payee required', 'error'); return null; }
             if (amount <= 0) { Toast.show('Amount must be more than zero', 'error'); return null; }
             return {
-                checkNumber: overlay.querySelector('#check-number').value.trim(),
+                // Carry the id and anything else the record already holds, so
+                // editing never quietly drops a field added later.
+                ...c,
+                checkNumber: q('#check-number').value.trim(),
                 payee,
                 amount,
-                checkDate: overlay.querySelector('#check-date').value || Utils.today(),
-                memo: overlay.querySelector('#check-memo').value.trim(),
-                voided: false,
-                createdAt: new Date().toISOString(),
+                checkDate: q('#check-date').value || Utils.today(),
+                memo: q('#check-memo').value.trim(),
+                voided: voidEl ? voidEl.checked : !!c.voided,
+                createdAt: c.createdAt || new Date().toISOString(),
             };
         };
 
@@ -185,13 +211,22 @@ const ChecksView = {
             if (!check) return;
             const id = await db.saveCheck(check);
             overlay.remove();
-            Toast.show('Check saved', 'success');
-            if (thenPrint) this.print({ ...check, id }, state.company);
+            Toast.show(editing ? 'Check updated' : 'Check saved', 'success');
+            if (thenPrint) this.print({ ...check, id: check.id || id }, state.company);
             onChange();
         };
 
-        overlay.querySelector('#save-check').addEventListener('click', () => save(false));
-        overlay.querySelector('#save-print-check').addEventListener('click', () => save(true));
+        q('#save-check').addEventListener('click', () => save(false));
+        printBtn.addEventListener('click', () => save(true));
+
+        const del = q('#delete-check');
+        if (del) del.addEventListener('click', async () => {
+            if (!confirm('Delete this check from the register?\n\nIf the paper check was printed, tick Voided instead — that keeps the number in your records, which is what reconciliation needs.')) return;
+            await db.deleteCheck(c.id);
+            overlay.remove();
+            Toast.show('Removed from register', 'success');
+            onChange();
+        });
     },
 
     // ── Calibration ──
